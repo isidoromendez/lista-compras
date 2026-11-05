@@ -9,11 +9,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { authErrorMessage, useAuth } from '../auth/AuthProvider';
+import { authErrorMessage, isAuthCancel, useAuth } from '../auth/AuthProvider';
+import { googleSignInAvailable } from '../auth/google';
 import { colors } from '../theme';
 
 export function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +30,18 @@ export function LoginScreen() {
       await signIn(email, password);
     } catch (e) {
       setError(authErrorMessage(e));
+      setLoading(false);
+    }
+  };
+
+  const submitGoogle = async () => {
+    if (loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      if (!isAuthCancel(e)) setError(authErrorMessage(e));
       setLoading(false);
     }
   };
@@ -86,6 +99,29 @@ export function LoginScreen() {
           )}
         </Pressable>
 
+        {googleSignInAvailable && (
+          <>
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>o</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.googleButton,
+                loading && styles.buttonDisabled,
+                pressed && styles.pressed,
+              ]}
+              onPress={submitGoogle}
+              disabled={loading}
+              accessibilityRole="button"
+            >
+              <Text style={styles.googleG}>G</Text>
+              <Text style={styles.googleText}>Ingresar con Google</Text>
+            </Pressable>
+          </>
+        )}
+
         <Text style={styles.hint}>
           ¿No tenés cuenta? Pedísela a quien administra la app.
         </Text>
@@ -128,5 +164,21 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.5 },
   pressed: { opacity: 0.7 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 18 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { marginHorizontal: 12, color: colors.muted, fontSize: 13 },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 13,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  googleG: { fontSize: 17, fontWeight: '700', color: '#4285F4' },
+  googleText: { fontSize: 16, fontWeight: '600', color: colors.text },
   hint: { textAlign: 'center', color: colors.muted, fontSize: 13, marginTop: 20 },
 });
