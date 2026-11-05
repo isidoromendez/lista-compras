@@ -1,17 +1,35 @@
 rules_version = '2';
 
-// Solo usuarios con sesión iniciada pueden leer o modificar la lista.
-// Las cuentas se crean a mano en Firebase Authentication (registro público desactivado).
+// Acceso solo para miembros: usuarios con sesión iniciada cuyo email figura
+// como documento en la colección "miembros" (ID del documento = email en minúsculas).
+// Los miembros se administran a mano desde la consola de Firebase.
+// Así, aunque alguien logre iniciar sesión (por ejemplo, por un descuido en la
+// configuración de Authentication), no puede ver ni tocar la lista.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.email is string;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function isMember() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/miembros/$(myEmail()));
+    }
+
+    // Cada usuario solo puede consultar si él mismo es miembro.
+    match /miembros/{email} {
+      allow read: if signedIn() && email == myEmail();
+      allow write: if false;
     }
 
     match /items/{itemId} {
-      allow read, delete: if signedIn();
+      allow read, delete: if isMember();
 
-      allow create: if signedIn()
+      allow create: if isMember()
         && request.resource.data.keys().hasOnly(['nombre', 'creadoPor', 'creadoEn'])
         && request.resource.data.nombre is string
         && request.resource.data.nombre.size() > 0
