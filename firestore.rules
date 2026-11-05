@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Solo usuarios con sesión iniciada pueden leer o modificar la lista.
+// Las cuentas se crean a mano en Firebase Authentication (registro público desactivado).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /items/{itemId} {
+      allow read, delete: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['nombre', 'creadoPor', 'creadoEn'])
+        && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() > 0
+        && request.resource.data.nombre.size() <= 100
+        && request.resource.data.creadoPor == request.auth.token.email
+        && request.resource.data.creadoEn == request.time;
+
+      allow update: if false;
+    }
+
+    // Todo lo demás, cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
