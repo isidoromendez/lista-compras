@@ -1,0 +1,27 @@
+name: Deploy reglas de Firestore
+
+# Las reglas son globales del proyecto (las comparten producción y previews).
+# Se despliegan al mergear a main, o a mano desde la pestaña Actions
+# (por ejemplo, para probar un preview que necesita reglas nuevas).
+on:
+  push:
+    branches: [main]
+    paths: [firestore.rules]
+  workflow_dispatch:
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Credenciales
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx --yes firebase-tools@latest deploy --only firestore:rules --non-interactive
