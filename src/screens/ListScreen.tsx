@@ -1,3 +1,4 @@
+import Feather from '@expo/vector-icons/Feather';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,15 +10,21 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../auth/AuthProvider';
+import { IconButton } from '../components/IconButton';
 import { addItem, deleteItem, subscribeToItems, type Item } from '../items/items';
-import { colors } from '../theme';
+import { fonts, useTheme } from '../theme';
+import { initials, shortName, timeAgo } from '../utils/format';
 
 export function ListScreen() {
   const { user, signOut } = useAuth();
+  const { colors, scheme, toggle } = useTheme();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [focused, setFocused] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(
     () =>
@@ -35,6 +42,12 @@ export function ListScreen() {
       ),
     [],
   );
+
+  // Refresca los "hace X min" cada minuto.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const onAdd = () => {
     const nombre = draft.trim();
@@ -54,69 +67,129 @@ export function ListScreen() {
     });
   };
 
+  const count = items.length;
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Lista de compras</Text>
-        <Pressable onPress={signOut} accessibilityRole="button" hitSlop={8}>
-          <Text style={styles.signOut}>Salir</Text>
-        </Pressable>
+      <View style={styles.topBar}>
+        <View style={styles.brand}>
+          <View style={[styles.dot, { backgroundColor: colors.accent }]} />
+          <Text style={[styles.brandText, { color: colors.text }]}>Lista de compras</Text>
+        </View>
+        <View style={styles.actions}>
+          <IconButton
+            onPress={toggle}
+            label={scheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          >
+            <Feather name={scheme === 'dark' ? 'sun' : 'moon'} size={15} color={colors.secondary} />
+          </IconButton>
+          <IconButton onPress={() => setMenuOpen((o) => !o)} label="Cuenta">
+            <Text style={[styles.initials, { color: colors.text }]}>{initials(user?.email)}</Text>
+          </IconButton>
+        </View>
       </View>
-      <Text style={styles.userLine} numberOfLines={1}>
-        {user?.email}
-      </Text>
+
+      {menuOpen && (
+        <View style={[styles.menu, { borderColor: colors.border, backgroundColor: colors.background }]}>
+          <Text style={[styles.menuEmail, { color: colors.muted }]} numberOfLines={1}>
+            {user?.email}
+          </Text>
+          <Pressable
+            onPress={signOut}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.menuItem, pressed && { backgroundColor: colors.pressed }]}
+          >
+            <Feather name="log-out" size={14} color={colors.text} />
+            <Text style={[styles.menuItemText, { color: colors.text }]}>Salir</Text>
+          </Pressable>
+        </View>
+      )}
+
+      <View style={styles.titleRow}>
+        <Text style={[styles.title, { color: colors.text }]}>¿Qué falta?</Text>
+        {count > 0 && (
+          <View style={[styles.pill, { backgroundColor: colors.accentSoft }]}>
+            <Text style={[styles.pillText, { color: colors.accentText }]}>
+              {count} {count === 1 ? 'ítem' : 'ítems'}
+            </Text>
+          </View>
+        )}
+      </View>
 
       <View style={styles.inputRow}>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            { color: colors.text, borderColor: focused ? colors.accent : colors.border },
+            focused && { boxShadow: `0 0 0 3px ${colors.accentRing}` },
+          ]}
           value={draft}
           onChangeText={setDraft}
           onSubmitEditing={onAdd}
-          placeholder="¿Qué hay que comprar?"
-          placeholderTextColor={colors.muted}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder="Agregar algo…"
+          placeholderTextColor={colors.faint}
           returnKeyType="done"
+          submitBehavior="submit"
           maxLength={100}
         />
         <Pressable
-          style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.addButton,
+            { backgroundColor: colors.primary },
+            pressed && styles.pressed,
+          ]}
           onPress={onAdd}
           accessibilityRole="button"
           accessibilityLabel="Agregar ítem"
         >
-          <Text style={styles.addButtonText}>+</Text>
+          <Feather name="plus" size={18} color={colors.onPrimary} />
         </Pressable>
       </View>
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>}
 
       {loading ? (
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator color={colors.primary} />
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.muted} />
         </View>
       ) : (
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={items.length === 0 && styles.emptyContainer}
+          style={[styles.list, items.length > 0 && { borderTopColor: colors.divider }]}
+          contentContainerStyle={items.length === 0 && styles.center}
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            <Text style={styles.empty}>La lista está vacía. ¡Agregá lo que falte!</Text>
+            <View style={styles.empty}>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No falta nada</Text>
+              <Text style={[styles.emptyBody, { color: colors.muted }]}>
+                Cuando alguien agregue algo, aparece acá.
+              </Text>
+            </View>
           }
           renderItem={({ item }) => (
-            <View style={styles.item}>
-              <View style={styles.itemBody}>
-                <Text style={styles.itemText}>{item.nombre}</Text>
-                <Text style={styles.itemMeta} numberOfLines={1}>
-                  {item.creadoPor}
+            <View style={[styles.row, { borderBottomColor: colors.divider }]}>
+              <View style={styles.rowBody}>
+                <Text style={[styles.rowText, { color: colors.text }]}>{item.nombre}</Text>
+                <Text style={[styles.rowMeta, { color: colors.muted }]} numberOfLines={1}>
+                  {shortName(item.creadoPor)} · {timeAgo(item.creadoEn, now)}
                 </Text>
               </View>
               <Pressable
                 onPress={() => onDelete(item)}
-                style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.deleteButton,
+                  pressed && { backgroundColor: colors.pressed },
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel={`Eliminar ${item.nombre}`}
-                hitSlop={8}
+                hitSlop={6}
               >
-                <Text style={styles.deleteText}>✕</Text>
+                {({ pressed }) => (
+                  <Feather name="x" size={16} color={pressed ? colors.text : colors.faint} />
+                )}
               </Pressable>
             </View>
           )}
@@ -132,58 +205,90 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 560,
     alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 32,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 32, fontWeight: '700', color: colors.text },
-  signOut: { color: colors.primary, fontSize: 15, fontWeight: '600' },
-  userLine: { color: colors.muted, fontSize: 13, marginTop: 4, marginBottom: 20 },
-  inputRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  input: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  addButton: {
-    width: 48,
-    borderRadius: 12,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: { opacity: 0.6 },
-  addButtonText: { color: '#fff', fontSize: 26, fontWeight: '600', marginTop: -2 },
-  error: { color: colors.danger, fontSize: 14, marginBottom: 12 },
-  item: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingLeft: 14,
-    paddingRight: 6,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#eceef2',
+    justifyContent: 'space-between',
+    marginBottom: 28,
   },
-  itemBody: { flex: 1 },
-  itemText: { fontSize: 16, color: colors.text },
-  itemMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  deleteButton: {
-    width: 40,
-    height: 40,
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  brandText: { fontFamily: fonts.medium, fontSize: 14 },
+  actions: { flexDirection: 'row', gap: 6 },
+  initials: { fontFamily: fonts.medium, fontSize: 11 },
+  menu: {
+    position: 'absolute',
+    top: 58,
+    right: 20,
+    zIndex: 10,
+    minWidth: 200,
+    borderWidth: 1,
     borderRadius: 10,
+    padding: 6,
+  },
+  menuEmail: { fontFamily: fonts.mono, fontSize: 11, paddingHorizontal: 8, paddingVertical: 6 },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  menuItemText: { fontFamily: fonts.regular, fontSize: 14 },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  title: { fontFamily: fonts.semibold, fontSize: 28, letterSpacing: -0.8 },
+  pill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  pillText: { fontFamily: fonts.mono, fontSize: 12 },
+  inputRow: { flexDirection: 'row', gap: 8, marginBottom: 18 },
+  input: {
+    flex: 1,
+    height: 42,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    // Sin el contorno del navegador en web: el foco se marca con el borde verde.
+    outlineStyle: 'none' as 'solid',
+  },
+  addButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteText: { fontSize: 18, color: colors.muted },
-  emptyContainer: { flexGrow: 1, justifyContent: 'center' },
-  empty: { textAlign: 'center', color: colors.muted, fontSize: 15 },
+  pressed: { opacity: 0.8 },
+  error: { fontFamily: fonts.regular, fontSize: 13, marginBottom: 12 },
+  list: { flex: 1, borderTopWidth: 1, borderTopColor: 'transparent' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingLeft: 2,
+    borderBottomWidth: 1,
+  },
+  rowBody: { flex: 1 },
+  rowText: { fontFamily: fonts.regular, fontSize: 15 },
+  rowMeta: { fontFamily: fonts.mono, fontSize: 11, marginTop: 3 },
+  deleteButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  center: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
+  empty: { alignItems: 'center', gap: 4 },
+  emptyTitle: { fontFamily: fonts.medium, fontSize: 15 },
+  emptyBody: { fontFamily: fonts.regular, fontSize: 13 },
 });
