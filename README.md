@@ -12,7 +12,7 @@ Lista de compras compartida para la familia. App en Expo (Android + web) con Fir
 
 ## Acceso
 
-Solo pueden entrar los usuarios creados a mano en Firebase Console → Authentication. El registro público está desactivado.
+Se ingresa solo con cuenta de Google. Solo pueden entrar los usuarios creados a mano en Firebase Console → Authentication (con su email de Google). El registro público está desactivado.
 
 ## Configuración (una sola vez)
 
