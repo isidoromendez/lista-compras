@@ -1,40 +1,18 @@
+import Feather from '@expo/vector-icons/Feather';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { authErrorMessage, isAuthCancel, useAuth } from '../auth/AuthProvider';
 import { googleSignInAvailable } from '../auth/google';
-import { colors } from '../theme';
+import { IconButton } from '../components/IconButton';
+import { fonts, useTheme } from '../theme';
 
 export function LoginScreen() {
-  const { signIn, signInWithGoogle } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { signInWithGoogle } = useAuth();
+  const { colors, scheme, toggle } = useTheme();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
-
   const submit = async () => {
-    if (!canSubmit) return;
-    setError(null);
-    setLoading(true);
-    try {
-      await signIn(email, password);
-    } catch (e) {
-      setError(authErrorMessage(e));
-      setLoading(false);
-    }
-  };
-
-  const submitGoogle = async () => {
     if (loading) return;
     setError(null);
     setLoading(true);
@@ -47,138 +25,86 @@ export function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.container}>
-        <Text style={styles.title}>Lista de compras</Text>
-        <Text style={styles.subtitle}>Ingresá con la cuenta que te dieron.</Text>
-
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Email"
-          placeholderTextColor={colors.muted}
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          textContentType="username"
-          returnKeyType="next"
-        />
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Contraseña"
-          placeholderTextColor={colors.muted}
-          secureTextEntry
-          autoComplete="password"
-          textContentType="password"
-          returnKeyType="go"
-          onSubmitEditing={submit}
-        />
-
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            !canSubmit && styles.buttonDisabled,
-            pressed && styles.pressed,
-          ]}
-          onPress={submit}
-          disabled={!canSubmit}
-          accessibilityRole="button"
+    <View style={styles.screen}>
+      <View style={styles.topBar}>
+        <IconButton
+          onPress={toggle}
+          label={scheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Ingresar</Text>
-          )}
-        </Pressable>
+          <Feather name={scheme === 'dark' ? 'sun' : 'moon'} size={15} color={colors.secondary} />
+        </IconButton>
+      </View>
 
-        {googleSignInAvailable && (
-          <>
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>o</Text>
-              <View style={styles.dividerLine} />
-            </View>
-            <Pressable
-              style={({ pressed }) => [
-                styles.googleButton,
-                loading && styles.buttonDisabled,
-                pressed && styles.pressed,
-              ]}
-              onPress={submitGoogle}
-              disabled={loading}
-              accessibilityRole="button"
-            >
-              <Text style={styles.googleG}>G</Text>
-              <Text style={styles.googleText}>Ingresar con Google</Text>
-            </Pressable>
-          </>
+      <View style={styles.container}>
+        <View style={[styles.dot, { backgroundColor: colors.accent }]} />
+        <Text style={[styles.title, { color: colors.text }]}>Lista de compras</Text>
+        <Text style={[styles.subtitle, { color: colors.secondary }]}>
+          La lista de la familia, siempre al día.
+        </Text>
+
+        {googleSignInAvailable ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              { backgroundColor: colors.primary },
+              (pressed || loading) && styles.pressed,
+            ]}
+            onPress={submit}
+            disabled={loading}
+            accessibilityRole="button"
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.onPrimary} />
+            ) : (
+              <>
+                <Text style={[styles.googleG, { color: colors.onPrimary }]}>G</Text>
+                <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+                  Continuar con Google
+                </Text>
+              </>
+            )}
+          </Pressable>
+        ) : (
+          <Text style={[styles.notice, { color: colors.text }]}>
+            Por ahora el ingreso funciona desde la versión web. Abrí la app en el navegador.
+          </Text>
         )}
 
-        <Text style={styles.hint}>
-          ¿No tenés cuenta? Pedísela a quien administra la app.
-        </Text>
+        {error && <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>}
+
+        <Text style={[styles.hint, { color: colors.muted }]}>Solo cuentas autorizadas</Text>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  screen: { flex: 1 },
+  topBar: { flexDirection: 'row', justifyContent: 'flex-end', padding: 20 },
   container: {
     flex: 1,
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 400,
     alignSelf: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     justifyContent: 'center',
+    paddingBottom: 72,
   },
-  title: { fontSize: 32, fontWeight: '700', color: colors.text, marginBottom: 6 },
-  subtitle: { fontSize: 15, color: colors.muted, marginBottom: 24 },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 12,
-  },
-  error: { color: colors.danger, fontSize: 14, marginBottom: 12 },
+  dot: { width: 8, height: 8, borderRadius: 4, marginBottom: 16 },
+  title: { fontFamily: fonts.semibold, fontSize: 28, letterSpacing: -0.8, marginBottom: 6 },
+  subtitle: { fontFamily: fonts.regular, fontSize: 15, marginBottom: 28 },
   button: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  pressed: { opacity: 0.7 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 18 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText: { marginHorizontal: 12, color: colors.muted, fontSize: 13 },
-  googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingVertical: 13,
-    borderWidth: 1,
-    borderColor: colors.border,
+    height: 46,
+    borderRadius: 8,
   },
-  googleG: { fontSize: 17, fontWeight: '700', color: '#4285F4' },
-  googleText: { fontSize: 16, fontWeight: '600', color: colors.text },
-  hint: { textAlign: 'center', color: colors.muted, fontSize: 13, marginTop: 20 },
+  pressed: { opacity: 0.85 },
+  googleG: { fontFamily: fonts.semibold, fontSize: 16 },
+  buttonText: { fontFamily: fonts.medium, fontSize: 15 },
+  notice: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21 },
+  error: { fontFamily: fonts.regular, fontSize: 13, marginTop: 14 },
+  hint: { fontFamily: fonts.mono, fontSize: 11, textAlign: 'center', marginTop: 18 },
 });

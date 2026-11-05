@@ -1,4 +1,4 @@
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth';
+import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { auth } from '../firebase/auth';
 import { signInWithGoogle } from './google';
@@ -6,7 +6,6 @@ import { signInWithGoogle } from './google';
 type AuthState = {
   user: User | null;
   initializing: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -29,9 +28,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthState = {
     user,
     initializing,
-    signIn: async (email, password) => {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-    },
     signInWithGoogle,
     signOut: () => signOut(auth),
   };
@@ -55,12 +51,6 @@ export function isAuthCancel(error: unknown): boolean {
 export function authErrorMessage(error: unknown): string {
   const code = (error as { code?: string })?.code ?? '';
   switch (code) {
-    case 'auth/invalid-email':
-      return 'El email no es válido.';
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found':
-      return 'Email o contraseña incorrectos.';
     case 'auth/user-disabled':
       return 'Esta cuenta está deshabilitada.';
     case 'auth/too-many-requests':
@@ -68,7 +58,7 @@ export function authErrorMessage(error: unknown): string {
     case 'auth/admin-restricted-operation':
       return 'Esta cuenta no está autorizada. Pedile acceso a quien administra la app.';
     case 'auth/account-exists-with-different-credential':
-      return 'Ese email ya entra con otro método. Probá con email y contraseña.';
+      return 'Esa cuenta no se pudo vincular. Pedile ayuda a quien administra la app.';
     case 'auth/popup-blocked':
       return 'El navegador bloqueó la ventana de Google. Permití las ventanas emergentes y probá de nuevo.';
     case 'auth/unauthorized-domain':
