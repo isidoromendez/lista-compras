@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../auth/AuthProvider';
 import { IconButton } from '../components/IconButton';
+import { InstallButton } from '../components/InstallButton';
 import { addItem, deleteItem, subscribeToItems, type Item } from '../items/items';
 import { fonts, useTheme } from '../theme';
 import { initials, shortName, timeAgo } from '../utils/format';
@@ -77,6 +78,7 @@ export function ListScreen() {
           <Text style={[styles.brandText, { color: colors.text }]}>Lista de compras</Text>
         </View>
         <View style={styles.actions}>
+          <InstallButton variant="compact" />
           <IconButton
             onPress={toggle}
             label={scheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
@@ -209,6 +211,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   topBar: {
+    zIndex: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -223,7 +226,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 58,
     right: 20,
-    zIndex: 10,
+    zIndex: 30,
     minWidth: 200,
     borderWidth: 1,
     borderRadius: 10,

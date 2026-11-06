@@ -34,6 +34,10 @@ function Shell() {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       document.body.style.backgroundColor = colors.background;
       document.documentElement.style.colorScheme = scheme;
+      // La barra del sistema (y la de la app instalada) sigue el tema elegido.
+      document
+        .querySelectorAll('meta[name="theme-color"]')
+        .forEach((m) => m.setAttribute('content', colors.background));
     }
   }, [colors.background, scheme]);
 

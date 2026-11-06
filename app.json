@@ -19,7 +19,10 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./public/icons/favicon.png",
+      "name": "Lista de compras",
+      "shortName": "Compras",
+      "lang": "es-AR"
     }
   }
 }
