@@ -1,0 +1,17 @@
+name: Prueba técnica Precios Claros
+
+on:
+  push:
+    branches: ['spike/**']
+    paths: ['spike/**', '.github/workflows/spike-precios.yml']
+
+jobs:
+  spike:
+    if: ${{ github.ref == 'refs/heads/spike/precios-claros' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node spike/precios-claros.mjs
