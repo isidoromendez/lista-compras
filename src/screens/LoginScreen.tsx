@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { authErrorMessage, isAuthCancel, useAuth } from '../auth/AuthProvider';
 import { googleSignInAvailable } from '../auth/google';
 import { IconButton } from '../components/IconButton';
+import { InstallButton } from '../components/InstallButton';
 import { fonts, useTheme } from '../theme';
 
 export function LoginScreen() {
@@ -71,6 +72,8 @@ export function LoginScreen() {
         )}
 
         {error && <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>}
+
+        <InstallButton variant="block" />
 
         <Text style={[styles.hint, { color: colors.muted }]}>Solo cuentas autorizadas</Text>
       </View>

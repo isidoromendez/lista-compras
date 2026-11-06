@@ -11,10 +11,10 @@ import {
 } from 'react-native';
 import { useAuth } from '../auth/AuthProvider';
 import { IconButton } from '../components/IconButton';
+import { InstallButton } from '../components/InstallButton';
 import { addItem, deleteItem, subscribeToItems, type Item } from '../items/items';
 import { fonts, useTheme } from '../theme';
 import { initials, shortName, timeAgo } from '../utils/format';
-import { useInstallPrompt } from '../utils/useInstallPrompt';
 
 export function ListScreen() {
   const { user, signOut } = useAuth();
@@ -26,7 +26,6 @@ export function ListScreen() {
   const [focused, setFocused] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
-  const { canInstall, install } = useInstallPrompt();
 
   useEffect(
     () =>
@@ -79,6 +78,7 @@ export function ListScreen() {
           <Text style={[styles.brandText, { color: colors.text }]}>Lista de compras</Text>
         </View>
         <View style={styles.actions}>
+          <InstallButton variant="compact" />
           <IconButton
             onPress={toggle}
             label={scheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
@@ -96,19 +96,6 @@ export function ListScreen() {
           <Text style={[styles.menuEmail, { color: colors.muted }]} numberOfLines={1}>
             {user?.email}
           </Text>
-          {canInstall && (
-            <Pressable
-              onPress={() => {
-                setMenuOpen(false);
-                install();
-              }}
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.menuItem, pressed && { backgroundColor: colors.pressed }]}
-            >
-              <Feather name="download" size={14} color={colors.text} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Instalar app</Text>
-            </Pressable>
-          )}
           <Pressable
             onPress={signOut}
             accessibilityRole="button"
@@ -224,6 +211,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   topBar: {
+    zIndex: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -238,7 +226,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 58,
     right: 20,
-    zIndex: 10,
+    zIndex: 30,
     minWidth: 200,
     borderWidth: 1,
     borderRadius: 10,
