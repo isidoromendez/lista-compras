@@ -84,3 +84,24 @@ log('```\n' + JSON.stringify(raw.json ?? raw.text, null, 1).slice(0, 2500) + '\n
 
 const fs = await import('node:fs');
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
+
+// 4) Camino B: ¿GitHub puede llegar a los datos abiertos oficiales (SEPA)?
+log('\n## 4. Datos abiertos SEPA (camino B)');
+for (const url of [
+  'https://datos.gob.ar/dataset/produccion-precios-claros---base-sepa',
+  'https://datos.produccion.gob.ar/dataset/sepa-precios',
+  'https://datos.produccion.gob.ar/api/3/action/package_show?id=sepa-precios',
+]) {
+  try {
+    const t0 = Date.now();
+    const r = await fetch(url, { redirect: 'follow' });
+    const txt = await r.text();
+    const zips = [...new Set(txt.match(/https?:[^"'\s<>]+\.zip/g) ?? [])];
+    log(`${url} → ${r.status} en ${Date.now() - t0} ms · ${zips.length} zip(s): ${zips.slice(0, 3).join(' , ')}`);
+    if (zips[0]) {
+      const h = await fetch(zips[0], { method: 'HEAD' });
+      log(`   HEAD ${zips[0]} → ${h.status}, tamaño ${h.headers.get('content-length') ?? '?'} bytes`);
+    }
+  } catch (e) { log(`${url} → error ${String(e)}`); }
+}
+if (process.env.GITHUB_STEP_SUMMARY) (await import('node:fs')).appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.slice(-8).join('\n') + '\n');

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prueba Precios Claros</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #fff; color: #0a0a0a; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p { color: #666; font-size: 14px; margin: 0 0 16px; }
+  button { width: 100%; height: 46px; border-radius: 8px; border: 0; background: #0a0a0a; color: #fff; font-size: 15px; margin-bottom: 10px; }
+  button.sec { background: #fff; color: #0a0a0a; border: 1px solid #e5e5e5; }
+  pre { white-space: pre-wrap; font-size: 12px; background: #f5f5f5; padding: 12px; border-radius: 8px; line-height: 1.5; }
+  .ok { color: #0d8a6a; font-weight: 600; } .err { color: #d93036; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Prueba de Precios Claros</h1>
+<p>Página temporal de prueba. Consulta precios cerca tuyo y muestra si el servicio responde desde nuestra app.</p>
+<button id="gps">Probar con mi ubicación</button>
+<button id="caba" class="sec">Probar con el Obelisco (CABA)</button>
+<pre id="out">Tocá un botón…</pre>
+<script>
+const BASE = 'https://d3e6htiiul5ek9.cloudfront.net/prod';
+const out = document.getElementById('out');
+const log = (html) => { out.innerHTML += html + '\n'; };
+const median = (a) => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const fmt = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+
+async function get(path, params) {
+  const t0 = performance.now();
+  const res = await fetch(BASE + '/' + path + '?' + new URLSearchParams(params));
+  const json = await res.json();
+  return { status: res.status, ms: Math.round(performance.now() - t0), json };
+}
+
+async function probar(lat, lng) {
+  out.innerHTML = '';
+  log('Ubicación: ' + lat.toFixed(4) + ', ' + lng.toFixed(4));
+  let ids;
+  try {
+    const s = await get('sucursales', { lat, lng, limit: 30 });
+    const lista = (s.json.sucursales || []).filter((x) => !(Number(x.distanciaNumero) > 40));
+    log('<span class="ok">✓ Sucursales: respondió en ' + s.ms + ' ms</span> · ' + lista.length + ' a menos de 40 km');
+    lista.slice(0, 3).forEach((x) => log('   ' + x.banderaDescripcion + ' · ' + x.direccion + ' (' + x.distanciaDescripcion + ')'));
+    ids = lista.map((x) => x.id).join(',');
+  } catch (e) {
+    log('<span class="err">✗ No se pudo consultar sucursales: ' + e.message + '</span>');
+    log('(Si dice "Failed to fetch", el servicio bloquea consultas desde nuestra app.)');
+    return;
+  }
+  for (const q of ['leche la serenisima', 'yerba playadito', 'papel higienico', 'shampoo']) {
+    try {
+      const r = await get('productos', { string: q, array_sucursales: ids, offset: 0, limit: 1, sort: '-cant_sucursales_disponible' });
+      const p = (r.json.productos || [])[0];
+      if (!p) { log('\n"' + q + '": sin resultados'); continue; }
+      const d = await get('producto', { id_producto: p.id, array_sucursales: ids, limit: 30 });
+      const precios = (d.json.sucursales || []).filter((s) => !s.message && s.preciosProducto && s.preciosProducto.precioLista)
+        .map((s) => ({ precio: Number(s.preciosProducto.precioLista), donde: s.banderaDescripcion }));
+      log('\n<b>' + p.marca + ' ' + p.nombre + '</b> (' + p.presentacion + ')');
+      log('   código ' + p.id + ' · ' + d.ms + ' ms');
+      if (!precios.length) { log('   sin precios en la zona'); continue; }
+      const min = precios.reduce((a, b) => (b.precio < a.precio ? b : a));
+      log('   típico ' + fmt(median(precios.map((x) => x.precio))) + ' · más barato ' + fmt(min.precio) + ' en ' + min.donde + ' · ' + precios.length + ' súpers');
+    } catch (e) {
+      log('\n"' + q + '": <span class="err">error ' + e.message + '</span>');
+    }
+  }
+  log('\n<span class="ok">Listo.</span> Mandale una captura a Claude.');
+}
+
+document.getElementById('caba').onclick = () => probar(-34.6037, -58.3816);
+document.getElementById('gps').onclick = () => {
+  out.textContent = 'Pidiendo ubicación…';
+  navigator.geolocation.getCurrentPosition(
+    (p) => probar(p.coords.latitude, p.coords.longitude),
+    (e) => { out.textContent = 'No se pudo obtener la ubicación (' + e.message + '). Probá con el Obelisco.'; },
+    { enableHighAccuracy: false, timeout: 15000 });
+};
+</script>
+</body>
+</html>
