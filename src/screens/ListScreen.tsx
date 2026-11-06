@@ -14,6 +14,7 @@ import { IconButton } from '../components/IconButton';
 import { addItem, deleteItem, subscribeToItems, type Item } from '../items/items';
 import { fonts, useTheme } from '../theme';
 import { initials, shortName, timeAgo } from '../utils/format';
+import { useInstallPrompt } from '../utils/useInstallPrompt';
 
 export function ListScreen() {
   const { user, signOut } = useAuth();
@@ -25,6 +26,7 @@ export function ListScreen() {
   const [focused, setFocused] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const { canInstall, install } = useInstallPrompt();
 
   useEffect(
     () =>
@@ -94,6 +96,19 @@ export function ListScreen() {
           <Text style={[styles.menuEmail, { color: colors.muted }]} numberOfLines={1}>
             {user?.email}
           </Text>
+          {canInstall && (
+            <Pressable
+              onPress={() => {
+                setMenuOpen(false);
+                install();
+              }}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.menuItem, pressed && { backgroundColor: colors.pressed }]}
+            >
+              <Feather name="download" size={14} color={colors.text} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Instalar app</Text>
+            </Pressable>
+          )}
           <Pressable
             onPress={signOut}
             accessibilityRole="button"
