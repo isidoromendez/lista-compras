@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prueba escáner + precio</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #fff; color: #0a0a0a; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #666; font-size: 13px; margin: 0 0 14px; }
+  .zona { font-size: 12px; color: #0d8a6a; background: #e8f7f1; border-radius: 999px; padding: 4px 10px; display: inline-block; margin-bottom: 12px; }
+  .cam { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #111; border-radius: 12px; overflow: hidden; }
+  video { width: 100%; height: 100%; object-fit: cover; }
+  .mira { position: absolute; left: 10%; right: 10%; top: 38%; height: 24%; border: 2px solid rgba(47, 209, 155, .9); border-radius: 10px; }
+  .estado { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; color: #fff; font-size: 13px; text-shadow: 0 1px 2px #000; }
+  button { width: 100%; height: 46px; border-radius: 8px; border: 0; background: #0a0a0a; color: #fff; font-size: 15px; font-weight: 600; margin-top: 10px; }
+  button.sec { background: #fff; color: #0a0a0a; border: 1px solid #e5e5e5; font-weight: 500; }
+  .manual { display: flex; gap: 8px; margin-top: 10px; }
+  .manual input { flex: 1; height: 44px; border: 1px solid #e5e5e5; border-radius: 8px; padding: 0 12px; font-size: 15px; }
+  .manual button { width: 90px; margin: 0; }
+  .card { border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px; margin-top: 14px; }
+  .card .nombre { font-size: 17px; font-weight: 600; line-height: 1.3; }
+  .card .pres { color: #666; font-size: 13px; margin-top: 2px; }
+  .card .precio { font-size: 32px; font-weight: 700; margin-top: 12px; letter-spacing: -0.5px; }
+  .card .label { font-size: 12px; color: #666; }
+  .card .barato { font-size: 13px; color: #666; margin-top: 6px; }
+  .card .meta { font-family: ui-monospace, monospace; font-size: 11px; color: #8f8f8f; margin-top: 10px; }
+  .err { color: #d93036; }
+  .zona.err { background: #fdecec; }
+  .oculto { display: none; }
+</style>
+</head>
+<body>
+<h1>Escáner + precio sugerido</h1>
+<p class="sub">Página de prueba. Escaneá el código de barras de un producto.</p>
+<div id="zona" class="zona">Buscando tu ubicación…</div>
+
+<div class="cam">
+  <video id="video" playsinline muted></video>
+  <div class="mira"></div>
+  <div id="estado" class="estado">Tocá “Abrir cámara”</div>
+</div>
+<button id="abrir">Abrir cámara</button>
+
+<div class="manual">
+  <input id="codigo" inputmode="numeric" placeholder="O escribí el código" />
+  <button id="buscar">Buscar</button>
+</div>
+
+<div id="resultado"></div>
+
+<script>
+const BASE = 'https://d3e6htiiul5ek9.cloudfront.net/prod';
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+const median = (a) => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const corto = (s) => (s || '').length > 28 ? s.slice(0, 26) + '…' : s;
+
+let sucursales = null; // se piden una vez por ubicación
+let ultimo = '';
+let escaneando = false;
+
+async function get(path, params) {
+  const t0 = performance.now();
+  const res = await fetch(BASE + '/' + path + '?' + new URLSearchParams(params));
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return { json: await res.json(), ms: Math.round(performance.now() - t0) };
+}
+
+function ubicar() {
+  return new Promise((ok) => {
+    navigator.geolocation.getCurrentPosition(
+      (p) => ok({ lat: p.coords.latitude, lng: p.coords.longitude, gps: true }),
+      () => ok({ lat: -34.6037, lng: -58.3816, gps: false }),
+      { timeout: 15000, maximumAge: 300000 });
+  });
+}
+
+async function cargarZona() {
+  const u = await ubicar();
+  try {
+    const r = await get('sucursales', { lat: u.lat, lng: u.lng, limit: 30 });
+    sucursales = (r.json.sucursales || []).filter((s) => !(Number(s.distanciaNumero) > 40));
+    const loc = sucursales[0] ? sucursales[0].localidad : '';
+    $('zona').textContent = (u.gps ? '📍 ' : '📍 (sin GPS, uso CABA) ') + (loc || 'tu zona') + ' · ' + sucursales.length + ' súpers a menos de 40 km';
+  } catch (e) {
+    $('zona').textContent = 'No se pudo consultar la zona: ' + e.message;
+    $('zona').classList.add('err');
+  }
+}
+
+async function consultar(ean) {
+  $('resultado').innerHTML = '<div class="card">Buscando ' + ean + '…</div>';
+  if (!sucursales) await cargarZona();
+  if (!sucursales || !sucursales.length) { $('resultado').innerHTML = '<div class="card err">Sin súpers en la zona.</div>'; return; }
+  try {
+    const r = await get('producto', { id_producto: ean, array_sucursales: sucursales.map((s) => s.id).join(','), limit: 30 });
+    const p = r.json.producto;
+    if (!p || !p.nombre) {
+      $('resultado').innerHTML = '<div class="card"><div class="nombre">Producto no encontrado</div><div class="pres">El código ' + ean + ' no está en Precios Claros. En la app real acá te pediría el nombre.</div></div>' + otro();
+      return;
+    }
+    const precios = (r.json.sucursales || []).filter((s) => !s.message && s.preciosProducto && s.preciosProducto.precioLista)
+      .map((s) => ({ precio: Number(s.preciosProducto.precioLista), donde: corto(s.banderaDescripcion) + ' · ' + (s.distanciaDescripcion || '') }));
+    let html = '<div class="card"><div class="nombre">' + p.marca + ' · ' + p.nombre + '</div><div class="pres">' + (p.presentacion || '') + '</div>';
+    if (precios.length) {
+      const min = precios.reduce((a, b) => (b.precio < a.precio ? b : a));
+      html += '<div class="label" style="margin-top:12px">Precio sugerido en la zona</div><div class="precio" style="margin-top:2px">' + fmt(median(precios.map((x) => x.precio))) + '</div>';
+      html += '<div class="barato">más barato: ' + fmt(min.precio) + ' en ' + min.donde + '</div>';
+    } else {
+      html += '<div class="barato">Está en Precios Claros pero sin precios en tu zona.</div>';
+    }
+    html += '<div class="meta">código ' + ean + ' · ' + precios.length + ' súpers · ' + r.ms + ' ms</div></div>' + otro();
+    $('resultado').innerHTML = html;
+  } catch (e) {
+    $('resultado').innerHTML = '<div class="card err">Error consultando el precio: ' + e.message + '</div>' + otro();
+  }
+}
+
+function otro() { return '<button onclick="seguir()">Escanear otro</button>'; }
+window.seguir = () => { ultimo = ''; $('resultado').innerHTML = ''; escaneando = true; $('estado').textContent = 'Apuntá al código de barras'; };
+
+async function abrirCamara() {
+  // Lector nativo de Chrome; si el celular no lo trae, uno de respaldo (ZXing).
+  let Detector = window.BarcodeDetector;
+  let respaldo = false;
+  if (!Detector || !(await Detector.getSupportedFormats()).includes('ean_13')) {
+    $('estado').textContent = 'Cargando lector de respaldo…';
+    try {
+      Detector = (await import('/vendor/barcode-detector.js')).BarcodeDetector;
+      respaldo = true;
+    } catch (e) {
+      $('estado').textContent = 'No hay lector de códigos: escribí el código abajo';
+      return;
+    }
+  }
+  const detector = new Detector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false });
+    const v = $('video'); v.srcObject = stream; await v.play();
+  } catch (e) {
+    $('estado').textContent = 'No se pudo abrir la cámara: ' + e.message;
+    return;
+  }
+  $('abrir').classList.add('oculto');
+  escaneando = true;
+  $('estado').textContent = 'Apuntá al código de barras' + (respaldo ? ' (lector de respaldo)' : '');
+  const loop = async () => {
+    if (escaneando && $('video').readyState >= 2) {
+      try {
+        const codes = await detector.detect($('video'));
+        const c = codes[0] && codes[0].rawValue;
+        if (c && c !== ultimo) {
+          ultimo = c; escaneando = false;
+          if (navigator.vibrate) navigator.vibrate(60);
+          $('estado').textContent = 'Leído: ' + c;
+          consultar(c);
+        }
+      } catch {}
+    }
+    setTimeout(loop, 200);
+  };
+  loop();
+}
+
+$('abrir').onclick = abrirCamara;
+$('buscar').onclick = () => { const c = $('codigo').value.replace(/\D/g, ''); if (c) consultar(c); };
+cargarZona();
+</script>
+</body>
+</html>
