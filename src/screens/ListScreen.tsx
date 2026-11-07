@@ -12,9 +12,11 @@ import {
 import { useAuth } from '../auth/AuthProvider';
 import { IconButton } from '../components/IconButton';
 import { InstallButton } from '../components/InstallButton';
+import { VoiceSheet } from '../components/VoiceSheet';
 import { ItemRow } from '../components/ItemRow';
 import {
   addItem,
+  addItems,
   deleteItem,
   deleteItems,
   setComprado,
@@ -23,6 +25,8 @@ import {
 } from '../items/items';
 import { fonts, useTheme } from '../theme';
 import { initials } from '../utils/format';
+import type { ItemDictado } from '../voice/parse';
+import { dictadoDisponible } from '../voice/useDictado';
 
 export function ListScreen() {
   const { user, signOut } = useAuth();
@@ -34,6 +38,7 @@ export function ListScreen() {
   const [focused, setFocused] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [dictando, setDictando] = useState(false);
 
   useEffect(
     () =>
@@ -66,6 +71,15 @@ export function ListScreen() {
       console.warn('Error agregando ítem', e);
       setError('No se pudo agregar el ítem.');
       setDraft(nombre);
+    });
+  };
+
+  const onAddDictado = (nuevos: ItemDictado[]) => {
+    setDictando(false);
+    if (!user || !nuevos.length) return;
+    addItems(nuevos, user.email ?? user.uid).catch((e) => {
+      console.warn('Error agregando ítems dictados', e);
+      setError('No se pudieron agregar los ítems dictados.');
     });
   };
 
@@ -186,6 +200,21 @@ export function ListScreen() {
           submitBehavior="submit"
           maxLength={100}
         />
+        {dictadoDisponible && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.addButton,
+              styles.micButton,
+              { borderColor: colors.border },
+              pressed && { backgroundColor: colors.pressed },
+            ]}
+            onPress={() => setDictando(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Dictar ítems por voz"
+          >
+            <Feather name="mic" size={17} color={colors.text} />
+          </Pressable>
+        )}
         <Pressable
           style={({ pressed }) => [
             styles.addButton,
@@ -264,6 +293,8 @@ export function ListScreen() {
           )}
         />
       )}
+
+      {dictando && <VoiceSheet onClose={() => setDictando(false)} onAdd={onAddDictado} />}
     </View>
   );
 }
@@ -337,6 +368,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  micButton: { borderWidth: 1 },
   pressed: { opacity: 0.8 },
   error: { fontFamily: fonts.regular, fontSize: 13, marginBottom: 12 },
   list: { flex: 1, borderTopWidth: 1, borderTopColor: 'transparent' },
