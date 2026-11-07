@@ -48,3 +48,13 @@ test('vacío', () => {
   assert.deepEqual(ver(''), []);
   assert.deepEqual(ver('hay que comprar'), []);
 });
+
+test('"coma" dicho en voz alta separa ítems', () => {
+  assert.deepEqual(ver('yerba mate coma lavandina coma papel higiénico'), ['Yerba mate', 'Lavandina', 'Papel higiénico']);
+});
+
+test('cada pausa (segmento) es un ítem aparte', () => {
+  assert.deepEqual(ver(['yerba mate Levi', 'lavandina Ayudín', 'papel higiénico doble hoja']), [
+    'Yerba mate levi', 'Lavandina ayudín', 'Papel higiénico doble hoja',
+  ]);
+});
