@@ -1,0 +1,30 @@
+name: Escáner público — deploy a producción
+
+on:
+  push:
+    branches: [main]
+    paths: ['escaner/**', '.github/workflows/escaner-*.yml', 'firebase.json', '.firebaserc']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: escaner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: escaner/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: lista-compas-3763b
+          target: escaner
+          channelId: live
