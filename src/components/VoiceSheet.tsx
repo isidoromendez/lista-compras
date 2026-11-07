@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { fonts, useTheme } from '../theme';
 import { parsearDictado, type ItemDictado } from '../voice/parse';
@@ -40,6 +40,8 @@ export function VoiceSheet({ onClose, onAdd }: Props) {
     empezar();
   };
   const validas = (filas ?? []).filter((f) => f.nombre.trim());
+  // Mientras se dicta, se muestra cómo va quedando separada la lista.
+  const enVivo = useMemo(() => parsearDictado(segmentos), [segmentos]);
   const editar = (key: string, cambio: Partial<ItemDictado>) =>
     setFilas((fs) => fs && fs.map((f) => (f.key === key ? { ...f, ...cambio } : f)));
 
@@ -70,13 +72,20 @@ export function VoiceSheet({ onClose, onAdd }: Props) {
             {error ? 'Algo salió mal' : estado === 'escuchando' ? 'Te escucho…' : 'Un momento…'}
           </Text>
           <Text style={[styles.hint, { color: colors.muted }]}>
-            {error ?? 'Decí todo lo que falta. Hacé una pausa entre cosa y cosa.'}
+            {error ?? 'Hacé una pausa entre cosa y cosa (o decí "y"). Cuando termines, tocá Listo.'}
           </Text>
-          {segmentos.length > 0 && (
-            <Text style={[styles.transcript, { color: colors.secondary }]}>
-              {segmentos.filter((s) => s !== parcial).join(' · ')}
-              {parcial ? <Text style={{ color: colors.faint }}> {parcial}</Text> : null}
-            </Text>
+          {(enVivo.length > 0 || parcial) && (
+            <View style={styles.vivo}>
+              {enVivo.map((i, n) => (
+                <View key={n} style={[styles.vivoItem, { borderColor: colors.border }]}>
+                  <Text style={[styles.vivoText, { color: colors.text }]}>
+                    {i.nombre}
+                    {i.cantidad ? <Text style={{ color: colors.muted }}> · {i.cantidad}</Text> : null}
+                  </Text>
+                </View>
+              ))}
+              {parcial ? <Text style={[styles.parcial, { color: colors.faint }]}>{parcial}…</Text> : null}
+            </View>
           )}
           <View style={styles.buttons}>
             {error ? (
@@ -169,7 +178,10 @@ const styles = StyleSheet.create({
   mic: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   state: { fontFamily: fonts.medium, fontSize: 17 },
   hint: { fontFamily: fonts.regular, fontSize: 14, textAlign: 'center', lineHeight: 20, maxWidth: 300 },
-  transcript: { fontFamily: fonts.regular, fontSize: 16, textAlign: 'center', lineHeight: 24, marginTop: 14 },
+  vivo: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 14 },
+  vivoItem: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },
+  vivoText: { fontFamily: fonts.regular, fontSize: 14 },
+  parcial: { fontFamily: fonts.regular, fontSize: 14, alignSelf: 'center' },
   preview: { flex: 1, marginTop: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: 1 },
   input: {
