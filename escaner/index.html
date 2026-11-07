@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Precio Zona · ¿Cuánto debería salir?</title>
+    <title>¿Cuánto sale? · Precios del súper en tu zona</title>
     <meta name="description" content="Escaneá un producto en el súper y mirá cuánto suele costar por tu zona, con los precios que los supermercados informan a Precios Claros." />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#FBF6EE" media="(prefers-color-scheme: light)" />
@@ -11,7 +11,7 @@
     <link rel="icon" type="image/png" href="/icons/favicon.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Precio Zona" />
+    <meta name="apple-mobile-web-app-title" content="Cuánto sale" />
     <script>
       // Tema guardado antes de pintar, para que no parpadee.
       try { const t = localStorage.getItem('tema'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}
@@ -20,7 +20,7 @@
   <body>
     <main class="app">
       <header class="top">
-        <div class="brand"><span class="logo" aria-hidden="true">$</span><span>Precio Zona</span></div>
+        <div class="brand"><span class="logo" aria-hidden="true">$</span><span>¿Cuánto sale?</span></div>
         <div class="sutiles">
           <button id="debug" class="sutil" type="button" aria-label="Datos técnicos">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9V8a3 3 0 0 1 6 0v1M8 9h8a1 1 0 0 1 1 1v3a5 5 0 0 1-10 0v-3a1 1 0 0 1 1-1zM12 18v-5M3 13h4M17 13h4M5 7l2.5 2M19 7l-2.5 2M5 20l2.5-2.5M19 20l-2.5-2.5"/></svg>
@@ -71,7 +71,7 @@
 
       <button id="instalar" class="instalar oculto" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M12 7v7m0 0-3-3m3 3 3-3M10 18h4"/></svg>
-        Agregá Precio Zona a tu pantalla
+        Agregá ¿Cuánto sale? a tu pantalla
       </button>
       <div id="ayuda-instalar" class="ayuda oculto" role="note">
         <strong>Cómo agregarla</strong>
@@ -82,7 +82,7 @@
 
       <footer class="pie">
         <p>Los precios los informan los supermercados al sistema <a href="https://www.preciosclaros.gob.ar" target="_blank" rel="noopener">Precios Claros</a> del Gobierno Nacional. Son precios de lista: puede haber otras ofertas, y los negocios chicos no figuran.</p>
-        <p>Precio Zona es una app independiente: no es del Gobierno ni de ningún supermercado. Tu ubicación se usa solo en tu celular. <span id="aviso-medicion"></span></p>
+        <p>¿Cuánto sale? es una app independiente: no es del Gobierno ni de ningún supermercado. Tu ubicación se usa solo en tu celular. <span id="aviso-medicion"></span></p>
       </footer>
     </main>
 

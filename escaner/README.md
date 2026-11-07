@@ -1,8 +1,8 @@
-# Precio Zona (escáner público)
+# ¿Cuánto sale? (escáner público)
 
 Web pública y sin login: escaneás un producto y ves el **precio sugerido en los súpers a menos de 40 km**, con los datos que los supermercados informan a [Precios Claros](https://www.preciosclaros.gob.ar) (SEPA, Secretaría de Comercio).
 
-- Sitio: `precio-zona.web.app` (segundo sitio de Hosting del proyecto `lista-compas-3763b`, target `escaner`).
+- Sitio: `cuanto-sale.web.app` (segundo sitio de Hosting del proyecto `lista-compas-3763b`, target `escaner`).
 - No usa la base de datos de la lista de compras ni Firebase Auth.
 - TypeScript sin framework + Vite (≈13 KB de JS). Se instala como app (PWA).
 

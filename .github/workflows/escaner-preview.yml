@@ -26,14 +26,18 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - name: Crear el sitio precio-zona si no existe
+      - name: Crear el sitio cuanto-sale si no existe
         env:
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          npx --yes firebase-tools@latest hosting:sites:get precio-zona --project lista-compas-3763b >/dev/null 2>&1 \
-            || npx --yes firebase-tools@latest hosting:sites:create precio-zona --project lista-compas-3763b --non-interactive
+          npx --yes firebase-tools@latest hosting:sites:get cuanto-sale --project lista-compas-3763b >/dev/null 2>&1 \
+            || npx --yes firebase-tools@latest hosting:sites:create cuanto-sale --project lista-compas-3763b --non-interactive
+          # El nombre anterior (precio-zona) nunca se publicó: se borra si quedó creado.
+          if npx --yes firebase-tools@latest hosting:sites:get precio-zona --project lista-compas-3763b >/dev/null 2>&1; then
+            npx --yes firebase-tools@latest hosting:sites:delete precio-zona --project lista-compas-3763b --force || true
+          fi
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,6 @@
 {
-  "name": "Precio Zona",
-  "short_name": "Precio Zona",
+  "name": "¿Cuánto sale?",
+  "short_name": "Cuánto sale",
   "description": "Escaneá un producto y mirá cuánto suele costar en los súpers de tu zona.",
   "lang": "es-AR",
   "id": "/",

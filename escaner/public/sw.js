@@ -1,8 +1,8 @@
-// Service worker de Precio Zona.
+// Service worker de ¿Cuánto sale?
 // - Páginas: primero la red (siempre la última versión); sin conexión, la copia guardada.
 // - Archivos con hash (/assets/) y el lector (/vendor/): primero la caché.
 // - Precios Claros y Analytics pasan directo (otros dominios).
-const CACHE = 'precio-zona-v2';
+const CACHE = 'cuanto-sale-v1';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icons/icon-192.png'])));
