@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "lista-compas-3763b"
+  },
+  "targets": {
+    "lista-compas-3763b": {
+      "hosting": {
+        "compras": [
+          "lista-compas-3763b"
+        ],
+        "escaner": [
+          "cuanto-sale"
+        ]
+      }
+    }
   }
 }

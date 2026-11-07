@@ -1,0 +1,47 @@
+name: Escáner público — preview (PR)
+
+on:
+  pull_request:
+    paths: ['escaner/**', '.github/workflows/escaner-*.yml', 'firebase.json', '.firebaserc']
+
+permissions:
+  checks: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: escaner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: escaner/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Crear el sitio cuanto-sale si no existe
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx --yes firebase-tools@latest hosting:sites:get cuanto-sale --project lista-compas-3763b >/dev/null 2>&1 \
+            || npx --yes firebase-tools@latest hosting:sites:create cuanto-sale --project lista-compas-3763b --non-interactive
+          # El nombre anterior (precio-zona) nunca se publicó: se borra si quedó creado.
+          if npx --yes firebase-tools@latest hosting:sites:get precio-zona --project lista-compas-3763b >/dev/null 2>&1; then
+            npx --yes firebase-tools@latest hosting:sites:delete precio-zona --project lista-compas-3763b --force || true
+          fi
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: lista-compas-3763b
+          target: escaner
+          expires: 7d

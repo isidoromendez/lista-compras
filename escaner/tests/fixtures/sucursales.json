@@ -1,0 +1,21 @@
+{
+ "sucursales": [
+  {
+   "id": "21-1-28",
+   "comercioId": 21,
+   "banderaId": 1,
+   "sucursalId": "28",
+   "sucursalTipo": "Supermercado",
+   "sucursalNombre": "Matheu",
+   "banderaDescripcion": "Toledo",
+   "comercioRazonSocial": "Supermercados Toledo S.A.",
+   "direccion": "Matheu 307",
+   "lat": "-38.0270803",
+   "lng": "-57.5395204",
+   "localidad": "Mar Del Plata",
+   "provincia": "AR-B",
+   "distanciaNumero": 0.71,
+   "distanciaDescripcion": "0.71 kilómetros"
+  }
+ ]
+}

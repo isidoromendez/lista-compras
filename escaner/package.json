@@ -1,0 +1,17 @@
+{
+  "name": "cuanto-sale",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Escáner público: precio sugerido de un producto en la zona, con datos de Precios Claros.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "node --experimental-strip-types --no-warnings --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^6.4.5"
+  }
+}
