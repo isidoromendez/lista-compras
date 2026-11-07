@@ -73,15 +73,23 @@ export function CameraScanner({ onCode, pausado = false, mensajePausa = '' }: Pr
       if (cancelado) return;
       setEstado('leyendo');
 
+      let ultimoEmitido: string | null = null;
       const leer = async () => {
         if (cancelado) return;
-        if (!pausadoRef.current && v.readyState >= 2) {
+        if (v.readyState >= 2) {
           try {
             const codigos = await detector.detect(v);
             const codigo = codigos[0]?.rawValue?.replace(/\D/g, '');
-            if (codigo && codigo.length >= 8 && filtro(codigo) && !pausadoRef.current) {
-              navigator.vibrate?.(50);
-              onCodeRef.current(codigo);
+            if (codigo && codigo.length >= 8) {
+              if (pausadoRef.current) {
+                // En pausa no se emite nada, pero si el último producto sigue en cuadro
+                // se lo sigue registrando: así no se relee apenas termina la pausa.
+                if (codigo === ultimoEmitido) filtro(codigo);
+              } else if (filtro(codigo)) {
+                ultimoEmitido = codigo;
+                navigator.vibrate?.(50);
+                onCodeRef.current(codigo);
+              }
             }
           } catch {
             // un cuadro que no se pudo analizar: se sigue con el próximo

@@ -29,9 +29,9 @@ import { initials } from '../utils/format';
 import type { ItemDictado } from '../voice/parse';
 import { dictadoDisponible } from '../voice/useDictado';
 
-type Props = { onOpenPrecios: () => void };
+type Props = { onOpenPrecios: () => void; onOpenSuper: () => void };
 
-export function ListScreen({ onOpenPrecios }: Props) {
+export function ListScreen({ onOpenPrecios, onOpenSuper }: Props) {
   const { user, signOut } = useAuth();
   const { colors, scheme, toggle } = useTheme();
   const [items, setItems] = useState<Item[]>([]);
@@ -237,6 +237,21 @@ export function ListScreen({ onOpenPrecios }: Props) {
         </Pressable>
       </View>
 
+      {Platform.OS === 'web' && (
+        <Pressable
+          onPress={onOpenSuper}
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.superButton,
+            { borderColor: colors.border },
+            pressed && { backgroundColor: colors.pressed },
+          ]}
+        >
+          <Feather name="shopping-cart" size={15} color={colors.accentText} />
+          <Text style={[styles.superText, { color: colors.text }]}>Estoy en el súper: escanear compras</Text>
+        </Pressable>
+      )}
+
       {error && <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>}
 
       {loading ? (
@@ -377,6 +392,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   micButton: { borderWidth: 1 },
+  superButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 40,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginTop: -6,
+    marginBottom: 16,
+  },
+  superText: { fontFamily: fonts.medium, fontSize: 14 },
   pressed: { opacity: 0.8 },
   error: { fontFamily: fonts.regular, fontSize: 13, marginBottom: 12 },
   list: { flex: 1, borderTopWidth: 1, borderTopColor: 'transparent' },
