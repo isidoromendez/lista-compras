@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prueba: respuesta de Precios Claros</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #fff; color: #0a0a0a; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 18px 0 6px; }
+  p { color: #666; font-size: 13px; margin: 0 0 12px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  button { height: 42px; border-radius: 8px; border: 1px solid #e5e5e5; background: #fff; font-size: 14px; padding: 0 12px; }
+  button.pri { background: #0a0a0a; color: #fff; border: 0; width: 100%; font-weight: 600; }
+  input { flex: 1; height: 42px; border: 1px solid #e5e5e5; border-radius: 8px; padding: 0 10px; font-size: 15px; min-width: 0; }
+  pre { white-space: pre-wrap; word-break: break-word; font-size: 11px; background: #f5f5f5; padding: 10px; border-radius: 8px; line-height: 1.45; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  td, th { border-bottom: 1px solid #eee; padding: 5px 4px; text-align: left; vertical-align: top; }
+  .ok { color: #0d8a6a; font-weight: 600; } .warn { color: #b26b00; font-weight: 600; } .err { color: #d93036; font-weight: 600; }
+  #estado { font-size: 13px; margin: 8px 0; }
+</style>
+</head>
+<body>
+<h1>Respuesta completa de Precios Claros</h1>
+<p>Página de prueba (no es la app). Muestra todos los campos que devuelve el servicio, para ver si trae fechas y promociones.</p>
+
+<div class="row">
+  <button data-ean="7793704000911">Yerba Playadito</button>
+  <button data-ean="7793704000805">Yerba Liebig</button>
+  <button data-ean="7794000960091">Mayonesa Hellmann's</button>
+</div>
+<div class="row">
+  <input id="ean" inputmode="numeric" placeholder="Otro código de barras" />
+  <button id="ir">Consultar</button>
+</div>
+<div id="estado">Buscando tu ubicación…</div>
+<button class="pri" id="copiar" disabled>Copiar resultado para Claude</button>
+
+<div id="salida"></div>
+
+<script>
+const BASE = 'https://d3e6htiiul5ek9.cloudfront.net/prod';
+const $ = (id) => document.getElementById(id);
+let ubic = null, sucursales = null, ultimo = null;
+
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+// Busca recursivamente campos que parezcan fechas o promociones.
+function camposInteresantes(obj, ruta = '', out = []) {
+  if (obj && typeof obj === 'object') {
+    for (const [k, v] of Object.entries(obj)) {
+      const r = ruta ? ruta + '.' + k : k;
+      if (/fecha|actualiz|date|hora|time|vigen|promo|oferta|desde|hasta|ultim/i.test(k)) out.push([r, v]);
+      if (v && typeof v === 'object') camposInteresantes(v, r, out);
+    }
+  }
+  return out;
+}
+
+async function get(path, params) {
+  const t0 = performance.now();
+  const res = await fetch(BASE + '/' + path + '?' + new URLSearchParams(params));
+  const headers = {};
+  res.headers.forEach((v, k) => { headers[k] = v; });
+  const json = await res.json();
+  return { status: res.status, ms: Math.round(performance.now() - t0), headers, json };
+}
+
+async function cargarZona() {
+  ubic = await new Promise((ok) => navigator.geolocation.getCurrentPosition(
+    (p) => ok({ lat: p.coords.latitude, lng: p.coords.longitude }),
+    () => ok({ lat: -34.6037, lng: -58.3816, sinGps: true }), { timeout: 15000 }));
+  try {
+    const r = await get('sucursales', { lat: ubic.lat, lng: ubic.lng, limit: 30 });
+    sucursales = r;
+    const n = (r.json.sucursales || []).length;
+    $('estado').innerHTML = '<span class="ok">✓</span> ' + (ubic.sinGps ? 'Sin GPS (uso CABA)' : 'Ubicación OK') + ' · ' + n + ' sucursales · tocá un producto';
+  } catch (e) {
+    $('estado').innerHTML = '<span class="err">No se pudo consultar sucursales: ' + esc(e.message) + '</span>';
+  }
+}
+
+async function consultar(ean) {
+  if (!sucursales) { $('estado').textContent = 'Todavía cargando la zona…'; return; }
+  $('estado').textContent = 'Consultando ' + ean + '…';
+  const ids = (sucursales.json.sucursales || []).map((s) => s.id).join(',');
+  try {
+    const r = await get('producto', { id_producto: ean, array_sucursales: ids, limit: 30 });
+    const suc = r.json.sucursales || [];
+    const conPrecio = suc.filter((s) => s.preciosProducto);
+    const interes = camposInteresantes(r.json);
+    const interesSuc = camposInteresantes(sucursales.json.sucursales?.[0] || {});
+    ultimo = {
+      fechaPrueba: new Date().toISOString(),
+      ean,
+      zona: { lat: +ubic.lat.toFixed(2), lng: +ubic.lng.toFixed(2) },
+      headersProducto: r.headers,
+      headersSucursales: sucursales.headers,
+      clavesRaiz: Object.keys(r.json),
+      producto: r.json.producto,
+      camposFechaPromo: interes.slice(0, 60),
+      camposFechaPromoSucursal: interesSuc,
+      ejemploSucursalDeZona: sucursales.json.sucursales?.[0],
+      sucursalesConPrecio: conPrecio.length,
+      sucursalesSinPrecio: suc.length - conPrecio.length,
+      primeras3Sucursales: suc.slice(0, 3),
+    };
+    $('copiar').disabled = false;
+
+    let html = '<h2>' + esc((r.json.producto?.marca || '') + ' · ' + (r.json.producto?.nombre || 'no encontrado')) + '</h2>';
+    html += '<p>' + conPrecio.length + ' súpers con precio, ' + (suc.length - conPrecio.length) + ' sin precio · ' + r.ms + ' ms</p>';
+    html += '<h2>Campos de fecha o promoción encontrados</h2>';
+    html += interes.length
+      ? '<pre>' + esc(interes.slice(0, 40).map(([k, v]) => k + ' = ' + JSON.stringify(v)).join('\n')) + '</pre>'
+      : '<p class="warn">No encontré campos de fecha ni promoción en la respuesta del producto.</p>';
+    html += '<h2>Precios por súper</h2><table><tr><th>Súper</th><th>Lista</th><th>Promo 1</th><th>Promo 2</th></tr>';
+    for (const s of conPrecio.slice(0, 15)) {
+      const p = s.preciosProducto || {};
+      const pr = (x) => x ? esc((x.precio ?? '') + ' ' + (x.leyenda ?? '')) : '';
+      html += '<tr><td>' + esc(s.banderaDescripcion || s.id) + '</td><td>' + esc(p.precioLista ?? '') + '</td><td>' + pr(p.promo1) + '</td><td>' + pr(p.promo2) + '</td></tr>';
+    }
+    html += '</table>';
+    html += '<h2>Encabezados de la respuesta (fecha del servidor, caché)</h2><pre>' + esc(JSON.stringify(r.headers, null, 1)) + '</pre>';
+    html += '<h2>Respuesta cruda (primeras 3 sucursales)</h2><pre>' + esc(JSON.stringify({ producto: r.json.producto, sucursales: suc.slice(0, 3), otras: Object.keys(r.json).filter((k) => !['producto', 'sucursales'].includes(k)).reduce((o, k) => ({ ...o, [k]: r.json[k] }), {}) }, null, 1)) + '</pre>';
+    html += '<h2>Una sucursal de la zona, cruda</h2><pre>' + esc(JSON.stringify(sucursales.json.sucursales?.[0], null, 1)) + '</pre>';
+    $('salida').innerHTML = html;
+    $('estado').innerHTML = '<span class="ok">✓ Listo.</span> Tocá "Copiar resultado" y pegáselo a Claude.';
+  } catch (e) {
+    $('estado').innerHTML = '<span class="err">Error: ' + esc(e.message) + '</span>';
+  }
+}
+
+document.querySelectorAll('[data-ean]').forEach((b) => (b.onclick = () => consultar(b.dataset.ean)));
+$('ir').onclick = () => { const c = $('ean').value.replace(/\D/g, ''); if (c) consultar(c); };
+$('copiar').onclick = async () => {
+  const txt = JSON.stringify(ultimo, null, 1);
+  try { await navigator.clipboard.writeText(txt); $('estado').innerHTML = '<span class="ok">✓ Copiado.</span> Pegalo en el chat con Claude.'; }
+  catch { const t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); $('estado').textContent = 'Copiado.'; }
+};
+cargarZona();
+</script>
+</body>
+</html>
