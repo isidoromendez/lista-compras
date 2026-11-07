@@ -3,6 +3,8 @@ import { fmtPrecio, type Resultado } from './precios.ts';
 import { enCuadras, semaforo } from './texto.ts';
 
 export const SITIO = 'https://cuanto-sale.web.app';
+export const MENSAJE_APP =
+  'Mirá esta app: escaneás el código de barras en el súper y te dice si el precio está caro o barato para tu barrio. Es gratis y no hay que registrarse.';
 
 type Compartible = Extract<Resultado, { estado: 'ok' | 'sin-precios' }>;
 

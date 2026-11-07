@@ -112,7 +112,6 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .historial .h-precio { font-weight: 800; }
 .historial .h-precio.sin { color: var(--muted); font-weight: 600; font-size: 14px; }
 
-.instalar { width: 100%; margin-top: 22px; display: flex; align-items: center; justify-content: center; gap: 9px; height: 52px; border: 0; border-radius: 16px; background: var(--green-soft); color: var(--green-text); font-weight: 800; font-size: 15px; }
 .ayuda { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-top: 10px; font-size: 15px; line-height: 1.45; }
 .ayuda p { color: var(--secondary); margin: 6px 0 0; }
 
@@ -140,3 +139,32 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .compartir { margin-top: 14px; width: 100%; height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 2px solid var(--border); border-radius: 14px; background: transparent; font-weight: 800; font-size: 15px; color: var(--secondary); }
 .compartir svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .compartir:active { background: var(--soft); }
+
+/* Instalar y compartir la app */
+.chip-instalar { height: 32px; display: flex; align-items: center; gap: 4px; padding: 0 11px 0 8px; margin-right: 4px; border: 0; border-radius: 999px; background: var(--green); color: #fff; font-weight: 800; font-size: 14px; }
+.chip-instalar svg, .btn-grande svg, .invita svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.sutil.compartir-app { color: var(--green-text); }
+.invita { position: relative; margin-top: 12px; border: 2px solid var(--green); background: var(--green-soft); color: var(--green-text); border-radius: 18px; padding: 14px 14px 14px; }
+.invita p { margin: 0 30px 10px 0; font-size: 15px; line-height: 1.4; }
+.invita b { font-weight: 800; }
+.invita .x { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border: 0; background: transparent; color: var(--green-text); display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+.btn-grande { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 14px; background: var(--green); color: #fff; font-weight: 800; font-size: 16px; text-decoration: none; }
+.btn-grande.claro { background: var(--card); color: var(--text); border: 2px solid var(--border); }
+.amable { font-size: 16px; line-height: 1.45; }
+.amable .hoja-texto, .amable p { color: var(--secondary); margin: 10px 0 14px; }
+.amable .pasos { margin: 8px 0 14px; padding-left: 22px; color: var(--secondary); }
+.amable .pasos li { margin: 6px 0; }
+.amable .btn-grande + .btn-grande { margin-top: 10px; }
+.amable .nota { font-size: 14px; color: var(--muted); margin: 8px 0 0; }
+.amable details { margin-top: 14px; font-size: 14px; color: var(--muted); }
+.amable summary { cursor: pointer; }
+.qr { display: block; margin: 0 auto 16px; border-radius: 14px; background: #fff; padding: 6px; }
+.fila-btns { display: flex; gap: 8px; margin-top: 10px; }
+.en-linea { width: 18px; height: 18px; vertical-align: -3px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Encabezado: que entre todo en una línea en celulares angostos */
+.brand { white-space: nowrap; min-width: 0; }
+.sutiles { align-items: center; }
+.sutiles .sutil { width: 30px; }
+.chip-instalar { padding: 0 10px 0 7px; font-size: 13.5px; }
+@media (max-width: 370px) { .brand span:last-child { font-size: 17px; } .chip-instalar svg { display: none; } }
