@@ -2,7 +2,7 @@ import './style.css';
 import { iniciarMedicion, medicionActiva, medir } from './analytics';
 import { alCambiar, instalar, yaInstalada } from './instalar';
 import {
-  consultarPrecio, fmtDistancia, fmtPrecio, obtenerZona,
+  _limpiarCache, consultarPrecio, fmtDistancia, fmtPrecio, obtenerZona,
   type PrecioEn, type Resultado, type Zona,
 } from './precios';
 import { iniciarLector, type EstadoCamara } from './scanner';
@@ -12,6 +12,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 iniciarMedicion();
+$('version').textContent = `versión ${__VERSION__}`;
 if (medicionActiva) $('aviso-medicion').textContent = 'Contamos visitas y escaneos con Google Analytics, sin datos personales.';
 
 // ---- Tema claro/oscuro (automático, con botón para cambiarlo) ----
@@ -66,6 +67,9 @@ async function cargarZona() {
       motivo = e.message === 'permiso' ? 'permiso' : 'ubicacion';
       throw e;
     });
+    // Siempre visible: qué ubicación recibió la app, para poder confirmarla.
+    $('ubic-texto').textContent = `📍 ${u.lat.toFixed(4)}, ${u.lng.toFixed(4)}${u.precisionM != null ? ` · precisión ±${u.precisionM >= 1000 ? (u.precisionM / 1000).toFixed(1) + ' km' : u.precisionM + ' m'}` : ''}`;
+    $('ubic').classList.remove('oculto');
     zona = await obtenerZona(u).catch((e) => {
       motivo = 'servicio';
       throw e;
@@ -78,7 +82,9 @@ async function cargarZona() {
       }.`;
       throw new Error();
     }
+    const cerca = zona.sucursales[0];
     $('zona-texto').textContent = `${zona.localidad || 'Tu zona'} · ${zona.sucursales.length} súpers a menos de 40 km`;
+    if (cerca) $('ubic-texto').textContent += ` · el más cercano: ${cerca.cadena} a ${fmtDistancia(cerca.distanciaKm)}`;
     medir({ nombre: 'zona_lista', localidad: zona.localidad, supers: zona.sucursales.length });
   } catch {
     zona = null;
@@ -99,6 +105,10 @@ async function cargarZona() {
   }
 }
 $('zona').addEventListener('click', cargarZona);
+$('ubic-actualizar').addEventListener('click', () => {
+  _limpiarCache();
+  cargarZona();
+});
 
 // ---- Cámara ----
 let estadoCamara: EstadoCamara | 'cerrada' = 'cerrada';

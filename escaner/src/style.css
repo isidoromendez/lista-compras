@@ -98,3 +98,7 @@ h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin: 0 0 4px
 .pie { margin-top: 28px; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .pie p { margin: 0 0 8px; }
 .pie a { color: inherit; }
+
+.ubic { margin: 6px 0 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: var(--muted); }
+.ubic .link { font-family: Geist, system-ui, sans-serif; font-size: 12px; padding: 0 0 0 4px; }
+.version { font-family: 'Geist Mono', ui-monospace, monospace; }
