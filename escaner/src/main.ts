@@ -60,6 +60,7 @@ async function cargarZona() {
   $('zona-texto').textContent = 'Buscando tu zona…';
   actualizarAviso();
   let motivo = '';
+  let detalle = '';
   try {
     const u = await pedirUbicacion().catch((e: Error) => {
       motivo = e.message === 'permiso' ? 'permiso' : 'ubicacion';
@@ -71,6 +72,10 @@ async function cargarZona() {
     });
     if (!zona.sucursales.length) {
       motivo = 'sin_supers';
+      // Diagnóstico: qué ubicación se recibió y a qué distancia quedó el súper más cercano.
+      detalle = `Ubicación recibida: ${u.lat.toFixed(3)}, ${u.lng.toFixed(3)}${u.precisionM != null ? ` (±${u.precisionM >= 1000 ? (u.precisionM / 1000).toFixed(1) + ' km' : u.precisionM + ' m'})` : ''}. ${
+        zona.masCercanaKm != null ? `El súper más cercano que informa está a ${Math.round(zona.masCercanaKm)} km` : `Precios Claros devolvió ${zona.respondidas} súpers`
+      }.`;
       throw new Error();
     }
     $('zona-texto').textContent = `${zona.localidad || 'Tu zona'} · ${zona.sucursales.length} súpers a menos de 40 km`;
@@ -83,11 +88,11 @@ async function cargarZona() {
       motivo === 'permiso'
         ? 'Necesito tu ubicación para saber los precios de tu zona. Tocá para reintentar.'
         : motivo === 'sin_supers'
-          ? 'No hay súpers con precios informados a menos de 40 km.'
+          ? `No hay súpers con precios informados a menos de 40 km. ${detalle} Tocá para reintentar.`
           : motivo === 'servicio'
             ? 'No se pudo consultar Precios Claros. Tocá para reintentar.'
             : 'No pude obtener tu ubicación. Tocá para reintentar.';
-    medir({ nombre: 'zona_error', motivo });
+    medir({ nombre: 'zona_error', motivo, detalle });
   } finally {
     buscandoZona = false;
     actualizarAviso();

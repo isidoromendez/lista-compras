@@ -4,7 +4,7 @@
 const BASE = 'https://d3e6htiiul5ek9.cloudfront.net/prod';
 export const RADIO_KM = 40;
 
-export type Ubicacion = { lat: number; lng: number };
+export type Ubicacion = { lat: number; lng: number; precisionM?: number };
 
 export type Sucursal = {
   clave: string; // "comercio-bandera-sucursal", por ejemplo "21-1-28"
@@ -14,7 +14,14 @@ export type Sucursal = {
   distanciaKm: number | null;
 };
 
-export type Zona = { ubicacion: Ubicacion; sucursales: Sucursal[]; localidad: string };
+export type Zona = {
+  ubicacion: Ubicacion;
+  sucursales: Sucursal[]; // las que están a menos de RADIO_KM
+  localidad: string;
+  // Para diagnosticar: cuántas devolvió el servicio y a qué distancia quedó la más cercana.
+  respondidas: number;
+  masCercanaKm: number | null;
+};
 
 export type PrecioEn = { precio: number; sucursal: Sucursal };
 export type Promo = PrecioEn & { descripcion: string };
@@ -150,16 +157,23 @@ let cache: { zona: Zona; en: number } | null = null;
 export async function obtenerZona(ubicacion: Ubicacion): Promise<Zona> {
   if (cache && Date.now() - cache.en < 30 * 60_000 && distanciaKm(cache.zona.ubicacion, ubicacion) < 3) return cache.zona;
   const r = await get<{ sucursales?: SucursalZonaApi[] }>('sucursales', { lat: ubicacion.lat, lng: ubicacion.lng, limit: 30 });
-  const sucursales = (r.sucursales ?? [])
+  const todas = (r.sucursales ?? [])
     .map<Sucursal>((s) => ({
       clave: claveSucursal(s),
       cadena: nombreCorto(s.banderaDescripcion || s.comercioRazonSocial || ''),
       direccion: titulo(s.direccion ?? ''),
       localidad: titulo(s.localidad ?? ''),
       distanciaKm: numero(s.distanciaNumero),
-    }))
-    .filter((s) => s.distanciaKm == null || s.distanciaKm <= RADIO_KM);
-  const zona = { ubicacion, sucursales, localidad: sucursales[0]?.localidad ?? '' };
+    }));
+  const sucursales = todas.filter((s) => s.distanciaKm == null || s.distanciaKm <= RADIO_KM);
+  const distancias = todas.map((s) => s.distanciaKm).filter((d): d is number => d != null);
+  const zona: Zona = {
+    ubicacion,
+    sucursales,
+    localidad: sucursales[0]?.localidad ?? '',
+    respondidas: todas.length,
+    masCercanaKm: distancias.length ? Math.min(...distancias) : null,
+  };
   cache = { zona, en: Date.now() };
   return zona;
 }
