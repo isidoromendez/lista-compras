@@ -1,13 +1,13 @@
 import './style.css';
 import { iniciarMedicion, medicionActiva, medir } from './analytics';
 import { anotar, diag, exportar } from './diag';
-import { alCambiar, instalar, yaInstalada } from './instalar';
+import { alCambiar, comoInstalar, instalar, yaInstalada } from './instalar';
 import {
   _limpiarCache, consultarPrecio, fmtDistancia, fmtPrecio, obtenerZona, observarRespuestas,
   type PrecioEn, type Resultado, type Zona,
 } from './precios';
 import { iniciarLector, type EstadoCamara } from './scanner';
-import { enlaceProducto, textoCompartir } from './compartir';
+import { enlaceProducto, MENSAJE_APP, SITIO, textoCompartir } from './compartir';
 import { enCuadras, leerPrecio, semaforo } from './texto';
 import { pedirUbicacion, type Lectura } from './ubicacion';
 
@@ -54,21 +54,167 @@ $('tema').addEventListener('click', () => {
 });
 colorBarra();
 
+// ---- Hojas (paneles que suben desde abajo) ----
+const abrirHoja = (id: string) => $(id).classList.remove('oculto');
+const cerrarHoja = (id: string) => $(id).classList.add('oculto');
+for (const id of ['hoja-instalar', 'hoja-app']) {
+  $(id).addEventListener('click', (e) => {
+    const t = e.target as HTMLElement;
+    if (t === $(id) || t.closest('.cerrar-hoja')) cerrarHoja(id);
+  });
+}
+
+// Recordar que alguien cerró una invitación, para no insistir por unos días.
+const DIA = 86_400_000;
+const cerradaHace = (clave: string) => {
+  try { return Date.now() - Number(localStorage.getItem(clave) ?? 0); } catch { return Infinity; }
+};
+const marcarCerrada = (clave: string) => {
+  try { localStorage.setItem(clave, String(Date.now())); } catch { /* sin almacenamiento */ }
+};
+
 // ---- Agregar a la pantalla ----
-const actualizarInstalar = () => $('instalar').classList.toggle('oculto', yaInstalada());
+const ICONO_COMPARTIR_IOS = '<svg viewBox="0 0 24 24" class="en-linea" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M6 11H5v10h14V11h-1"/></svg>';
+const waLink = (texto: string) => `https://wa.me/?text=${encodeURIComponent(texto)}`;
+
+function pintarHojaInstalar(caso: ReturnType<typeof comoInstalar>) {
+  const titulo = $('hi-titulo');
+  const cuerpo = $('hi-cuerpo');
+  if (caso === 'iphone') {
+    titulo.textContent = 'Agregala a tu pantalla';
+    cuerpo.innerHTML = `<ol class="pasos">
+        <li>Tocá el botón Compartir ${ICONO_COMPARTIR_IOS} (abajo de todo, en Safari).</li>
+        <li>Bajá un poco y tocá <b>“Agregar a inicio”</b>.</li>
+      </ol>
+      <button class="btn-grande cerrar-hoja" type="button">Listo</button>`;
+  } else if (caso === 'otra-app') {
+    titulo.textContent = 'Abrila en Chrome';
+    cuerpo.innerHTML = `<p>Estás viendo la app dentro de otra aplicación, y desde acá no se puede agregar.</p>
+      <ol class="pasos">
+        <li>Tocá los tres puntitos <b>⋮</b> arriba a la derecha.</li>
+        <li>Elegí <b>“Abrir en Chrome”</b> (o “Abrir en el navegador”).</li>
+        <li>Ahí tocá el botón verde <b>Instalar</b>.</li>
+      </ol>
+      <button class="btn-grande cerrar-hoja" type="button">Entendido</button>`;
+  } else {
+    titulo.textContent = 'Tu celular no deja instalarla';
+    cuerpo.innerHTML = `<p>No pasa nada. Guardala de una de estas formas y la tenés siempre a mano:</p>
+      <a id="hi-whatsapp" class="btn-grande whatsapp" href="${waLink(`¿Cuánto sale? Para ver si un precio está caro: ${SITIO}/?de=guardada`)}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8a4 4 0 0 1-1.8-1.8l.8-1-1-2z"/></svg>
+        Mandármela por WhatsApp
+      </a>
+      <p class="nota">Elegí tu propio chat (“Yo” o “Mensaje para mí”) y la vas a encontrar ahí.</p>
+      <button id="hi-favoritos" class="btn-grande claro" type="button" style="margin-top:14px">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>
+        Guardarla en favoritos
+      </button>
+      <p id="hi-fav-ayuda" class="nota oculto">Tocá los tres puntitos <b>⋮</b> arriba a la derecha y después la estrellita <b>☆</b>.</p>
+      <details><summary>¿Tenés un Xiaomi o Redmi?</summary>
+        <p>A veces sí se puede: en Ajustes → Aplicaciones → Chrome → Otros permisos, activá “Accesos directos de la pantalla de inicio” y volvé a tocar Instalar.</p>
+      </details>`;
+    $('hi-whatsapp').addEventListener('click', () => {
+      medir({ nombre: 'guardar_alternativa', como: 'whatsapp' });
+      anotar('guardar: whatsapp');
+    });
+    $('hi-favoritos').addEventListener('click', () => {
+      $('hi-fav-ayuda').classList.remove('oculto');
+      medir({ nombre: 'guardar_alternativa', como: 'favoritos' });
+      anotar('guardar: favoritos');
+    });
+  }
+}
+
+async function pedirInstalar(desde: 'encabezado' | 'tarjeta') {
+  const caso = comoInstalar();
+  anotar(`instalar (${desde}) · ${caso}`);
+  medir({ nombre: 'instalar_toque', desde, caso });
+  if (caso === 'dialogo' && (await instalar())) return;
+  pintarHojaInstalar(caso === 'dialogo' ? comoInstalar(navigator.userAgent, false) : caso);
+  abrirHoja('hoja-instalar');
+}
+
+const actualizarInstalar = () => $('instalar-top').classList.toggle('oculto', yaInstalada());
 alCambiar(actualizarInstalar);
 actualizarInstalar();
-$('instalar').addEventListener('click', async () => {
-  const conDialogo = await instalar();
-  medir({ nombre: 'instalar_toque', con_dialogo: conDialogo });
-  $('ayuda-instalar').classList.toggle('oculto', conDialogo);
-});
-$('ayuda-cerrar').addEventListener('click', () => $('ayuda-instalar').classList.add('oculto'));
+$('instalar-top').addEventListener('click', () => pedirInstalar('encabezado'));
 window.addEventListener('appinstalled', () => {
   medir({ nombre: 'app_instalada' });
   anotar('app instalada');
-  $('instalar').classList.add('oculto');
+  $('instalar-top').classList.add('oculto');
+  document.getElementById('invita-instalar')?.remove();
 });
+
+// ---- Pasar la app a alguien ----
+function abrirCompartirApp(desde: 'encabezado' | 'tarjeta') {
+  const wa = $<HTMLAnchorElement>('ha-whatsapp');
+  wa.href = waLink(`${MENSAJE_APP}\n${SITIO}/?de=whatsapp`);
+  wa.onclick = () => medir({ nombre: 'compartir_app', via: 'whatsapp', desde });
+  $('ha-otras').classList.toggle('oculto', !navigator.share);
+  $('ha-otras').onclick = async () => {
+    try {
+      await navigator.share({ title: '¿Cuánto sale?', text: MENSAJE_APP, url: `${SITIO}/?de=compartir` });
+      medir({ nombre: 'compartir_app', via: 'nativo', desde });
+    } catch { /* la persona lo canceló */ }
+  };
+  $('ha-copiar').textContent = 'Copiar el link';
+  $('ha-copiar').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(`${MENSAJE_APP}\n${SITIO}/?de=copiado`);
+      $('ha-copiar').textContent = '¡Copiado!';
+      medir({ nombre: 'compartir_app', via: 'copiado', desde });
+    } catch {
+      $('ha-copiar').textContent = SITIO.replace('https://', '');
+    }
+  };
+  anotar(`compartir app (${desde})`);
+  abrirHoja('hoja-app');
+}
+$('compartir-app').addEventListener('click', () => abrirCompartirApp('encabezado'));
+
+// ---- Invitaciones después de escanear (B: instalar · E: pasar la app) ----
+let escaneosOk = 0;
+function invitar() {
+  escaneosOk += 1;
+  let html = '';
+  let tipo: 'instalar' | 'compartir' | null = null;
+  if (escaneosOk === 1 && !yaInstalada() && cerradaHace('cerro-instalar') > 3 * DIA) {
+    tipo = 'instalar';
+    html = `<div id="invita-instalar" class="invita">
+      <p><b>¿Te sirvió?</b> Ponela en tu pantalla y la tenés lista para la próxima compra.</p>
+      <button class="btn-grande" data-accion="instalar" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14"/></svg>Agregar a mi pantalla</button>`;
+  } else if (escaneosOk === 3 && cerradaHace('cerro-compartir') > 7 * DIA) {
+    tipo = 'compartir';
+    html = `<div class="invita">
+      <p><b>¿Conocés a alguien que hace las compras?</b> Pasale la app, es gratis.</p>
+      <button class="btn-grande" data-accion="compartir" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>Pasale la app</button>`;
+  }
+  if (!tipo) return;
+  const caja = document.createElement('div');
+  caja.innerHTML = `${html}<button class="x" type="button" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
+  const tarjeta = caja.firstElementChild as HTMLElement;
+  tarjeta.addEventListener('click', (e) => {
+    const t = e.target as HTMLElement;
+    if (t.closest('.x')) {
+      marcarCerrada(tipo === 'instalar' ? 'cerro-instalar' : 'cerro-compartir');
+      medir({ nombre: 'invitacion_cerrada', tipo: tipo! });
+      tarjeta.remove();
+    } else if (t.closest('[data-accion="instalar"]')) pedirInstalar('tarjeta');
+    else if (t.closest('[data-accion="compartir"]')) abrirCompartirApp('tarjeta');
+  });
+  // Va entre la tarjeta del precio y el "Para ver otro…"
+  const siguiente = $('resultado').querySelector('.siguiente');
+  if (siguiente) siguiente.before(tarjeta);
+  else $('resultado').append(tarjeta);
+}
+
+// ---- De dónde llegó (link compartido, QR, WhatsApp) ----
+{
+  const de = new URLSearchParams(location.search).get('de');
+  if (de) {
+    medir({ nombre: 'llegada', de: de.slice(0, 20) });
+    anotar(`llegó desde: ${de}`);
+  }
+}
 
 // ---- Zona ----
 let zona: Zona | null = null;
@@ -218,7 +364,7 @@ type Escaneado = Extract<Resultado, { estado: 'ok' | 'sin-precios' | 'no-encontr
 let historial: Escaneado[] = [];
 // Un enlace compartido (?p=EAN) abre directamente ese producto, con los precios de la zona de quien lo abre.
 let pendiente = new URLSearchParams(location.search).get('p')?.replace(/\D/g, '') || null;
-if (pendiente) history.replaceState(null, '', location.pathname);
+if (location.search) history.replaceState(null, '', location.pathname);
 let actual: Escaneado | null = null;
 let consultaId = 0;
 
@@ -371,6 +517,7 @@ async function consultar(ean: string) {
     historial = [r, ...historial.filter((x) => x.ean !== ean)].slice(0, 30);
     mostrar(r);
     mostrarHistorial();
+    if (r.estado === 'ok') invitar();
     medir({
       nombre: 'escaneo',
       resultado: r.estado === 'ok' ? 'ok' : r.estado === 'sin-precios' ? 'sin_precios' : 'no_encontrado',

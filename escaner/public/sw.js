@@ -2,7 +2,7 @@
 // - Páginas: primero la red (siempre la última versión); sin conexión, la copia guardada.
 // - Archivos con hash (/assets/) y el lector (/vendor/): primero la caché.
 // - Precios Claros y Analytics pasan directo (otros dominios).
-const CACHE = 'cuanto-sale-v1';
+const CACHE = 'cuanto-sale-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icons/icon-192.png'])));

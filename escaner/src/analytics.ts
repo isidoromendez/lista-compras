@@ -35,7 +35,11 @@ export type Evento =
   | { nombre: 'zona_error'; motivo: string; detalle?: string }
   | { nombre: 'escaneo'; resultado: 'ok' | 'sin_precios' | 'no_encontrado' | 'error'; ean: string; producto?: string; localidad?: string; supers?: number; con_promo?: boolean }
   | { nombre: 'borrar_historial'; cantidad: number }
-  | { nombre: 'instalar_toque'; con_dialogo: boolean }
+  | { nombre: 'instalar_toque'; desde: 'encabezado' | 'tarjeta'; caso: string }
+  | { nombre: 'guardar_alternativa'; como: 'whatsapp' | 'favoritos' }
+  | { nombre: 'compartir_app'; via: 'whatsapp' | 'nativo' | 'copiado'; desde: 'encabezado' | 'tarjeta' }
+  | { nombre: 'invitacion_cerrada'; tipo: 'instalar' | 'compartir' }
+  | { nombre: 'llegada'; de: string }
   | { nombre: 'app_instalada' }
   | { nombre: 'semaforo'; veredicto: 'barato' | 'normal' | 'caro' }
   | { nombre: 'debug_abierto' }
