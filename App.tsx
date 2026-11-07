@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './src/auth/AuthProvider';
 import { ListScreen } from './src/screens/ListScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { PriceScannerScreen } from './src/screens/PriceScannerScreen';
+import { ShoppingScreen } from './src/screens/ShoppingScreen';
 import { ThemeProvider, useTheme } from './src/theme';
 
 function Root() {
@@ -28,9 +29,11 @@ function Root() {
 }
 
 function SignedIn() {
-  const [pantalla, setPantalla] = useState<'lista' | 'precios'>('lista');
-  if (pantalla === 'precios') return <PriceScannerScreen onClose={() => setPantalla('lista')} />;
-  return <ListScreen onOpenPrecios={() => setPantalla('precios')} />;
+  const [pantalla, setPantalla] = useState<'lista' | 'precios' | 'super'>('lista');
+  const volver = () => setPantalla('lista');
+  if (pantalla === 'precios') return <PriceScannerScreen onClose={volver} />;
+  if (pantalla === 'super') return <ShoppingScreen onClose={volver} />;
+  return <ListScreen onOpenPrecios={() => setPantalla('precios')} onOpenSuper={() => setPantalla('super')} />;
 }
 
 function Shell() {
