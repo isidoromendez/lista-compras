@@ -136,3 +136,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .btn-sec { border: 2px solid var(--border); background: transparent; }
 .btn-pri { border: 0; background: var(--primary); color: var(--on-primary); }
 .hoja-version { font-size: 11px; margin: 12px 0 0; }
+
+.compartir { margin-top: 14px; width: 100%; height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 2px solid var(--border); border-radius: 14px; background: transparent; font-weight: 800; font-size: 15px; color: var(--secondary); }
+.compartir svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.compartir:active { background: var(--soft); }

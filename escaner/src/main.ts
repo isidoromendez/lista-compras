@@ -7,6 +7,7 @@ import {
   type PrecioEn, type Resultado, type Zona,
 } from './precios';
 import { iniciarLector, type EstadoCamara } from './scanner';
+import { enlaceProducto, textoCompartir } from './compartir';
 import { enCuadras, leerPrecio, semaforo } from './texto';
 import { pedirUbicacion, type Lectura } from './ubicacion';
 
@@ -18,6 +19,7 @@ const ICONO = {
   ojo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
   barato: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>',
   normal: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 10h8M8 14h8"/></svg>',
+  compartir: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>',
   caro: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
 };
 
@@ -127,6 +129,12 @@ async function cargarZona() {
     );
     anotar(`zona ok · ${zona.localidad} · ${zona.sucursales.length} súpers`);
     medir({ nombre: 'zona_lista', localidad: zona.localidad, supers: zona.sucursales.length });
+    if (pendiente) {
+      const ean = pendiente;
+      pendiente = null;
+      anotar(`enlace compartido · ${ean}`);
+      consultar(ean);
+    }
   } catch {
     zona = null;
     const espera = esperaReintento();
@@ -208,9 +216,13 @@ navigator.permissions
 // ---- Resultado ----
 type Escaneado = Extract<Resultado, { estado: 'ok' | 'sin-precios' | 'no-encontrado' }>;
 let historial: Escaneado[] = [];
+// Un enlace compartido (?p=EAN) abre directamente ese producto, con los precios de la zona de quien lo abre.
+let pendiente = new URLSearchParams(location.search).get('p')?.replace(/\D/g, '') || null;
+if (pendiente) history.replaceState(null, '', location.pathname);
 let actual: Escaneado | null = null;
 let consultaId = 0;
 
+const botonCompartir = `<button type="button" class="compartir" id="compartir">${ICONO.compartir}<span>Compartir</span></button>`;
 const donde = (p: PrecioEn) => `${esc(p.sucursal.cadena)}${p.sucursal.distanciaKm != null ? ` · ${enCuadras(p.sucursal.distanciaKm)}` : ''}`;
 
 function tarjeta(r: Escaneado): string {
@@ -220,7 +232,7 @@ function tarjeta(r: Escaneado): string {
   }
   const titulo = `<p class="nombre">${esc(r.nombre)}</p>${r.presentacion || r.marca ? `<p class="pres">${esc([r.marca, r.presentacion].filter(Boolean).join(' · '))}</p>` : ''}`;
   if (r.estado === 'sin-precios') {
-    return `<div class="card">${titulo}<p class="suele">Ningún súper de tu zona informa el precio de este producto.</p></div>`;
+    return `<div class="card">${titulo}<p class="suele">Ningún súper de tu zona informa el precio de este producto.</p>${botonCompartir}</div>`;
   }
   const masBarato =
     r.cantidadSuper === 1
@@ -240,6 +252,7 @@ function tarjeta(r: Escaneado): string {
       <div class="campo">$<input id="aca" inputmode="decimal" autocomplete="off" placeholder="Escribí el precio de la góndola" aria-label="Precio de la góndola" /></div>
       <div id="veredicto"></div>
     </div>
+    ${botonCompartir}
   </div>
   <p class="siguiente">Para ver otro, apuntá a otro producto.</p>`;
 }
@@ -249,6 +262,9 @@ function mostrar(r: Escaneado) {
   $('resultado').innerHTML = tarjeta(r);
   $('ayuda-codigo').classList.add('oculto');
   const input = document.getElementById('aca') as HTMLInputElement | null;
+  document.getElementById('compartir')?.addEventListener('click', () => {
+    if (r.estado !== 'no-encontrado') compartir(r, input ? leerPrecio(input.value) : null);
+  });
   if (input && r.estado === 'ok') {
     let medido = false;
     input.addEventListener('input', () => {
@@ -276,6 +292,30 @@ function mostrar(r: Escaneado) {
       }
     });
   }
+}
+
+async function compartir(r: Extract<Escaneado, { estado: 'ok' | 'sin-precios' }>, precioAca: number | null) {
+  const text = textoCompartir(r, zona?.localidad ?? '', precioAca);
+  const url = enlaceProducto(r.ean);
+  let via: 'nativo' | 'copiado' | 'cancelado' = 'nativo';
+  try {
+    if (navigator.share) await navigator.share({ title: '¿Cuánto sale?', text, url });
+    else {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      via = 'copiado';
+      const b = document.getElementById('compartir');
+      const span = b?.querySelector('span');
+      if (span) {
+        span.textContent = '¡Copiado! Pegalo donde quieras';
+        setTimeout(() => (span.textContent = 'Compartir'), 2500);
+      }
+    }
+  } catch (e) {
+    via = 'cancelado';
+    if ((e as Error).name !== 'AbortError') anotar(`compartir error · ${String(e)}`);
+  }
+  anotar(`compartir ${r.ean} · ${via}`);
+  if (via !== 'cancelado') medir({ nombre: 'compartir', ean: r.ean, via, con_precio_aca: !!precioAca });
 }
 
 function mostrarHistorial() {

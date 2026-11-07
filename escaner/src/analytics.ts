@@ -38,7 +38,8 @@ export type Evento =
   | { nombre: 'instalar_toque'; con_dialogo: boolean }
   | { nombre: 'app_instalada' }
   | { nombre: 'semaforo'; veredicto: 'barato' | 'normal' | 'caro' }
-  | { nombre: 'debug_abierto' };
+  | { nombre: 'debug_abierto' }
+  | { nombre: 'compartir'; ean: string; via: 'nativo' | 'copiado'; con_precio_aca: boolean };
 
 export function medir(e: Evento) {
   if (!medicionActiva || !window.gtag) return;
