@@ -8,18 +8,45 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Campos de "comprado": o está comprado (por quien hace el cambio, ahora),
+    // o no está comprado y no quedan datos de compra.
+    function compraValida(d) {
+      return (d.get('comprado', false) == true
+          && d.compradoPor == request.auth.token.email
+          && d.compradoEn == request.time)
+        || (d.get('comprado', false) == false
+          && !('compradoPor' in d) && !('compradoEn' in d));
+    }
+
+    // Código de barras del producto (EAN/UPC), opcional.
+    function eanValido(d) {
+      return !('ean' in d) || (d.ean is string && d.ean.matches('[0-9]{6,14}'));
+    }
+
     match /items/{itemId} {
       allow read, delete: if signedIn();
 
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['nombre', 'creadoPor', 'creadoEn'])
+        && request.resource.data.keys().hasOnly(
+          ['nombre', 'creadoPor', 'creadoEn', 'cantidad', 'comprado', 'compradoPor', 'compradoEn', 'ean'])
         && request.resource.data.nombre is string
         && request.resource.data.nombre.size() > 0
         && request.resource.data.nombre.size() <= 100
         && request.resource.data.creadoPor == request.auth.token.email
-        && request.resource.data.creadoEn == request.time;
+        && request.resource.data.creadoEn == request.time
+        && (!('cantidad' in request.resource.data)
+          || (request.resource.data.cantidad is string
+            && request.resource.data.cantidad.size() > 0
+            && request.resource.data.cantidad.size() <= 20))
+        && compraValida(request.resource.data)
+        && eanValido(request.resource.data);
 
-      allow update: if false;
+      // Solo se puede marcar o desmarcar como comprado (y anotar el código escaneado).
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['comprado', 'compradoPor', 'compradoEn', 'ean'])
+        && compraValida(request.resource.data)
+        && eanValido(request.resource.data);
     }
 
     // Todo lo demás, cerrado.

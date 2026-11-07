@@ -1,9 +1,9 @@
 import Feather from '@expo/vector-icons/Feather';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
+  SectionList,
   StyleSheet,
   Text,
   TextInput,
@@ -12,9 +12,17 @@ import {
 import { useAuth } from '../auth/AuthProvider';
 import { IconButton } from '../components/IconButton';
 import { InstallButton } from '../components/InstallButton';
-import { addItem, deleteItem, subscribeToItems, type Item } from '../items/items';
+import { ItemRow } from '../components/ItemRow';
+import {
+  addItem,
+  deleteItem,
+  deleteItems,
+  setComprado,
+  subscribeToItems,
+  type Item,
+} from '../items/items';
 import { fonts, useTheme } from '../theme';
-import { initials, shortName, timeAgo } from '../utils/format';
+import { initials } from '../utils/format';
 
 export function ListScreen() {
   const { user, signOut } = useAuth();
@@ -68,7 +76,49 @@ export function ListScreen() {
     });
   };
 
-  const count = items.length;
+  const onToggle = (item: Item) => {
+    if (!user) return;
+    setComprado(item.id, !item.comprado, user.email ?? user.uid).catch((e) => {
+      console.warn('Error tachando ítem', e);
+      setError('No se pudo actualizar el ítem.');
+    });
+  };
+
+  // "Limpiar comprados" pide un segundo toque para confirmar (la lista es compartida).
+  const [confirmClear, setConfirmClear] = useState(false);
+  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (clearTimer.current) clearTimeout(clearTimer.current);
+  }, []);
+
+  const pendientes = useMemo(() => items.filter((i) => !i.comprado), [items]);
+  const comprados = useMemo(
+    () =>
+      items
+        .filter((i) => i.comprado)
+        .sort((a, b) => (b.compradoEn?.toMillis() ?? 0) - (a.compradoEn?.toMillis() ?? 0)),
+    [items],
+  );
+
+  const onClear = () => {
+    if (!confirmClear) {
+      setConfirmClear(true);
+      clearTimer.current = setTimeout(() => setConfirmClear(false), 3000);
+      return;
+    }
+    if (clearTimer.current) clearTimeout(clearTimer.current);
+    setConfirmClear(false);
+    deleteItems(comprados.map((i) => i.id)).catch((e) => {
+      console.warn('Error limpiando comprados', e);
+      setError('No se pudieron limpiar los comprados.');
+    });
+  };
+
+  const count = pendientes.length;
+  const sections = [
+    { key: 'pendientes', data: pendientes },
+    ...(comprados.length ? [{ key: 'comprados', data: comprados }] : []),
+  ];
 
   return (
     <View style={styles.container}>
@@ -157,12 +207,13 @@ export function ListScreen() {
           <ActivityIndicator color={colors.muted} />
         </View>
       ) : (
-        <FlatList
-          data={items}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
           style={[styles.list, items.length > 0 && { borderTopColor: colors.divider }]}
           contentContainerStyle={items.length === 0 && styles.center}
           keyboardShouldPersistTaps="handled"
+          stickySectionHeadersEnabled={false}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>No falta nada</Text>
@@ -171,29 +222,45 @@ export function ListScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <View style={[styles.row, { borderBottomColor: colors.divider }]}>
-              <View style={styles.rowBody}>
-                <Text style={[styles.rowText, { color: colors.text }]}>{item.nombre}</Text>
-                <Text style={[styles.rowMeta, { color: colors.muted }]} numberOfLines={1}>
-                  {shortName(item.creadoPor)} · {timeAgo(item.creadoEn, now)}
+          renderSectionHeader={({ section }) =>
+            section.key === 'comprados' ? (
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.secondary }]}>
+                  Comprados · {comprados.length}
                 </Text>
+                <Pressable
+                  onPress={onClear}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.clearButton,
+                    { borderColor: confirmClear ? colors.danger : colors.border },
+                    pressed && { backgroundColor: colors.pressed },
+                  ]}
+                >
+                  <Feather
+                    name="trash-2"
+                    size={12}
+                    color={confirmClear ? colors.danger : colors.secondary}
+                  />
+                  <Text
+                    style={[
+                      styles.clearText,
+                      { color: confirmClear ? colors.danger : colors.secondary },
+                    ]}
+                  >
+                    {confirmClear ? '¿Seguro? Tocá de nuevo' : 'Limpiar comprados'}
+                  </Text>
+                </Pressable>
               </View>
-              <Pressable
-                onPress={() => onDelete(item)}
-                style={({ pressed }) => [
-                  styles.deleteButton,
-                  pressed && { backgroundColor: colors.pressed },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={`Eliminar ${item.nombre}`}
-                hitSlop={6}
-              >
-                {({ pressed }) => (
-                  <Feather name="x" size={16} color={pressed ? colors.text : colors.faint} />
-                )}
-              </Pressable>
-            </View>
+            ) : pendientes.length === 0 && comprados.length > 0 ? (
+              <Text style={[styles.allDone, { color: colors.muted }]}>
+                Está todo comprado. 🎉
+              </Text>
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <ItemRow item={item} now={now} onToggle={onToggle} onDelete={onDelete} />
           )}
         />
       )}
@@ -273,23 +340,25 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.8 },
   error: { fontFamily: fonts.regular, fontSize: 13, marginBottom: 12 },
   list: { flex: 1, borderTopWidth: 1, borderTopColor: 'transparent' },
-  row: {
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingLeft: 2,
-    borderBottomWidth: 1,
+    justifyContent: 'space-between',
+    paddingTop: 22,
+    paddingBottom: 8,
   },
-  rowBody: { flex: 1 },
-  rowText: { fontFamily: fonts.regular, fontSize: 15 },
-  rowMeta: { fontFamily: fonts.mono, fontSize: 11, marginTop: 3 },
-  deleteButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
+  sectionTitle: { fontFamily: fonts.medium, fontSize: 13 },
+  clearButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    height: 28,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderRadius: 8,
   },
+  clearText: { fontFamily: fonts.medium, fontSize: 12 },
+  allDone: { fontFamily: fonts.regular, fontSize: 14, paddingVertical: 16, textAlign: 'center' },
   center: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { alignItems: 'center', gap: 4 },
   emptyTitle: { fontFamily: fonts.medium, fontSize: 15 },
