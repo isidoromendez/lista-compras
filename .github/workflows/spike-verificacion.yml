@@ -1,0 +1,16 @@
+name: Verificación datos abiertos SEPA
+
+on:
+  push:
+    branches: ['spike/verificacion']
+    paths: ['spike/**', '.github/workflows/spike-verificacion.yml']
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node spike/datos-abiertos.mjs
