@@ -1,0 +1,26 @@
+{
+ "status": 200,
+ "producto": {
+  "marca": "Sin marca",
+  "id": "7790040152793",
+  "nombre": "Galle Traviata C Portenita Pq96gr",
+  "presentacion": "None none",
+  "precioMin": null,
+  "precioMax": null,
+  "cantSucursalesDisponible": null
+ },
+ "sucursales": [
+  {
+   "message": "La sucursal no contiene el producto.",
+   "comercioId": "21",
+   "id": "28",
+   "banderaId": "1"
+  },
+  {
+   "message": "La sucursal no contiene el producto.",
+   "comercioId": "24",
+   "id": "324",
+   "banderaId": "1"
+  }
+ ]
+}

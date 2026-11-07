@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Precio Zona · ¿Cuánto debería salir?</title>
+    <meta name="description" content="Escaneá un producto en el súper y mirá cuánto debería salir en tu zona, con los precios que los supermercados informan a Precios Claros." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" href="/icons/favicon.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Precio Zona" />
+    <script>
+      // Tema guardado antes de pintar, para que no parpadee.
+      try { const t = localStorage.getItem('tema'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}
+    </script>
+  </head>
+  <body>
+    <main class="app">
+      <header class="top">
+        <div class="brand"><span class="dot"></span><span>Precio Zona</span></div>
+        <div class="acciones">
+          <button id="instalar" class="chip-btn oculto" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            Instalar
+          </button>
+          <button id="tema" class="icon-btn" type="button" aria-label="Cambiar tema">
+            <svg class="i-luna" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+            <svg class="i-sol" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <h1>¿Cuánto debería salir?</h1>
+      <p class="bajada">Escaneá un producto y mirá el precio en los súpers de tu zona.</p>
+
+      <button id="zona" class="zona" type="button" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span id="zona-texto">Buscando tu zona…</span>
+      </button>
+
+      <p id="ubic" class="ubic oculto"><span id="ubic-texto"></span> <button id="ubic-actualizar" class="link" type="button">Actualizar ubicación</button></p>
+
+      <div id="ayuda-instalar" class="ayuda oculto" role="note">
+        <strong>Cómo instalarla</strong>
+        <p>Abrí este link en Chrome, tocá el menú ⋮ y elegí “Instalar app” o “Agregar a la pantalla principal”.</p>
+        <p>En Xiaomi o Redmi, primero habilitá para Chrome el permiso “Accesos directos de la pantalla de inicio” (Ajustes → Aplicaciones → Chrome → Otros permisos).</p>
+        <button id="ayuda-cerrar" class="link" type="button">Entendido</button>
+      </div>
+
+      <section class="camara" aria-label="Cámara">
+        <video id="video" playsinline muted autoplay></video>
+        <div class="mira" aria-hidden="true"></div>
+        <button id="abrir" class="abrir" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>
+          Abrir cámara
+        </button>
+        <p id="aviso" class="aviso"></p>
+      </section>
+
+      <form id="manual" class="manual">
+        <input id="codigo" inputmode="numeric" autocomplete="off" placeholder="O escribí el código de barras" aria-label="Código de barras" />
+        <button type="submit">Buscar</button>
+      </form>
+
+      <section id="resultado" aria-live="polite"></section>
+
+      <section id="historial" class="historial oculto">
+        <div class="hist-top">
+          <h2 id="hist-titulo">Escaneados</h2>
+          <button id="borrar" class="chip-btn" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+            Borrar
+          </button>
+        </div>
+        <ul id="hist-lista"></ul>
+      </section>
+
+      <footer class="pie">
+        <p>Precios de <a href="https://www.preciosclaros.gob.ar" target="_blank" rel="noopener">Precios Claros</a> (Secretaría de Comercio, Gobierno Nacional), informados por los supermercados. Son precios de lista: pueden no incluir todas las promociones ni a los comercios chicos.</p>
+        <p>Precio Zona es una app independiente: no es del Gobierno ni de ningún supermercado. Tu ubicación se usa solo en tu celular para buscar los súpers cercanos. <span id="aviso-medicion"></span></p>
+        <p id="version" class="version"></p>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
