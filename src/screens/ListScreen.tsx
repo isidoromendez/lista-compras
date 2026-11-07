@@ -1,5 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import {
   ActivityIndicator,
   Pressable,
@@ -28,7 +29,9 @@ import { initials } from '../utils/format';
 import type { ItemDictado } from '../voice/parse';
 import { dictadoDisponible } from '../voice/useDictado';
 
-export function ListScreen() {
+type Props = { onOpenPrecios: () => void };
+
+export function ListScreen({ onOpenPrecios }: Props) {
   const { user, signOut } = useAuth();
   const { colors, scheme, toggle } = useTheme();
   const [items, setItems] = useState<Item[]>([]);
@@ -143,6 +146,11 @@ export function ListScreen() {
         </View>
         <View style={styles.actions}>
           <InstallButton variant="compact" />
+          {Platform.OS === 'web' && (
+            <IconButton onPress={onOpenPrecios} label="Consultar precio">
+              <Feather name="maximize" size={15} color={colors.secondary} />
+            </IconButton>
+          )}
           <IconButton
             onPress={toggle}
             label={scheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}

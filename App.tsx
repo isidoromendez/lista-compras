@@ -4,11 +4,12 @@ import { Geist_600SemiBold } from '@expo-google-fonts/geist/600SemiBold';
 import { GeistMono_400Regular } from '@expo-google-fonts/geist-mono/400Regular';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, SafeAreaView, StyleSheet, View } from 'react-native';
 import { AuthProvider, useAuth } from './src/auth/AuthProvider';
 import { ListScreen } from './src/screens/ListScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
+import { PriceScannerScreen } from './src/screens/PriceScannerScreen';
 import { ThemeProvider, useTheme } from './src/theme';
 
 function Root() {
@@ -23,7 +24,13 @@ function Root() {
     );
   }
 
-  return user ? <ListScreen /> : <LoginScreen />;
+  return user ? <SignedIn /> : <LoginScreen />;
+}
+
+function SignedIn() {
+  const [pantalla, setPantalla] = useState<'lista' | 'precios'>('lista');
+  if (pantalla === 'precios') return <PriceScannerScreen onClose={() => setPantalla('lista')} />;
+  return <ListScreen onOpenPrecios={() => setPantalla('precios')} />;
 }
 
 function Shell() {
