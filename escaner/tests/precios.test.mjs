@@ -113,3 +113,14 @@ test('lector: no repite el mismo código mientras sigue en cuadro', () => {
   assert.equal(f('123', 2100), true);
   assert.equal(f('779', 6000), true);
 });
+
+test('respuesta vacía del servicio (caída): no se guarda en caché', async () => {
+  const antes = globalThis.fetch;
+  let llamadas = 0;
+  globalThis.fetch = async () => { llamadas++; return { ok: true, status: 200, json: async () => ({ sucursales: [] }) }; };
+  const z = await obtenerZona(UBIC);
+  assert.equal(z.respondidas, 0);
+  await obtenerZona(UBIC);
+  assert.equal(llamadas, 2); // volvió a preguntar
+  globalThis.fetch = antes;
+});

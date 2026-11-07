@@ -51,6 +51,10 @@ window.addEventListener('appinstalled', () => {
 // ---- Zona (súpers a menos de 40 km) ----
 let zona: Zona | null = null;
 let buscandoZona = false;
+const REINTENTOS_MAX = 6;
+let reintentos = 0;
+let timerReintento: ReturnType<typeof setTimeout> | undefined;
+const esperaReintento = () => Math.min(10_000 * 2 ** reintentos, 120_000); // 10 s, 20 s, 40 s… hasta 2 min
 
 async function cargarZona() {
   if (buscandoZona) return;
@@ -74,6 +78,11 @@ async function cargarZona() {
       motivo = 'servicio';
       throw e;
     });
+    if (zona.respondidas === 0) {
+      // El servicio contestó sin datos: suele ser una caída de Precios Claros, no tu ubicación.
+      motivo = 'servicio_vacio';
+      throw new Error();
+    }
     if (!zona.sucursales.length) {
       motivo = 'sin_supers';
       // Diagnóstico: qué ubicación se recibió y a qué distancia quedó el súper más cercano.
@@ -83,6 +92,7 @@ async function cargarZona() {
       throw new Error();
     }
     const cerca = zona.sucursales[0];
+    reintentos = 0;
     $('zona-texto').textContent = `${zona.localidad || 'Tu zona'} · ${zona.sucursales.length} súpers a menos de 40 km`;
     if (cerca) $('ubic-texto').textContent += ` · el más cercano: ${cerca.cadena} a ${fmtDistancia(cerca.distanciaKm)}`;
     medir({ nombre: 'zona_lista', localidad: zona.localidad, supers: zona.sucursales.length });
@@ -95,16 +105,31 @@ async function cargarZona() {
         ? 'Necesito tu ubicación para saber los precios de tu zona. Tocá para reintentar.'
         : motivo === 'sin_supers'
           ? `No hay súpers con precios informados a menos de 40 km. ${detalle} Tocá para reintentar.`
-          : motivo === 'servicio'
-            ? 'No se pudo consultar Precios Claros. Tocá para reintentar.'
+          : motivo === 'servicio' || motivo === 'servicio_vacio'
+            ? `Precios Claros no está respondiendo (su sitio oficial también falla a veces). Reintento solo${reintentos < REINTENTOS_MAX ? ` en ${Math.round(esperaReintento() / 1000)} s` : ''}; también podés tocar acá.`
             : 'No pude obtener tu ubicación. Tocá para reintentar.';
     medir({ nombre: 'zona_error', motivo, detalle });
+    // Si el problema es del servicio, se reintenta solo con espera creciente.
+    if ((motivo === 'servicio' || motivo === 'servicio_vacio') && reintentos < REINTENTOS_MAX) {
+      const espera = esperaReintento();
+      reintentos += 1;
+      clearTimeout(timerReintento);
+      timerReintento = setTimeout(() => {
+        _limpiarCache();
+        cargarZona();
+      }, espera);
+    }
   } finally {
     buscandoZona = false;
     actualizarAviso();
   }
 }
-$('zona').addEventListener('click', cargarZona);
+$('zona').addEventListener('click', () => {
+  reintentos = 0;
+  clearTimeout(timerReintento);
+  _limpiarCache();
+  cargarZona();
+});
 $('ubic-actualizar').addEventListener('click', () => {
   _limpiarCache();
   cargarZona();
@@ -244,7 +269,7 @@ async function consultar(ean: string) {
     });
   } catch {
     if (id !== consultaId) return;
-    $('resultado').innerHTML = `<div class="card"><p class="nombre">No se pudo consultar el precio</p><p class="linea">Revisá la conexión y volvé a escanear.</p></div>`;
+    $('resultado').innerHTML = `<div class="card"><p class="nombre">No se pudo consultar el precio</p><p class="linea">Revisá la conexión, o puede que Precios Claros no esté respondiendo. Volvé a escanear en un rato.</p></div>`;
     medir({ nombre: 'escaneo', resultado: 'error', ean, localidad: zona.localidad });
   }
 }

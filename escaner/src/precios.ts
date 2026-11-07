@@ -174,7 +174,7 @@ export async function obtenerZona(ubicacion: Ubicacion): Promise<Zona> {
     respondidas: todas.length,
     masCercanaKm: distancias.length ? Math.min(...distancias) : null,
   };
-  cache = { zona, en: Date.now() };
+  if (zona.respondidas > 0) cache = { zona, en: Date.now() }; // una respuesta vacía no se guarda
   return zona;
 }
 
