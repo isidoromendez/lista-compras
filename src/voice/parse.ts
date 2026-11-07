@@ -34,7 +34,7 @@ const UNIDADES: [string[], string, string][] = [
 
 // Frases de relleno que además separan ítems ("hay que comprar X hay que comprar Y").
 const RELLENO =
-  /\b(?:hay que (?:comprar|traer)|tenemos que (?:comprar|traer)|tengo que (?:comprar|traer)|necesitamos|necesito|nos falta|nos faltan|faltan?|comprar|traer|agrega|agregá|agregar|anota|anotá|anotar|por favor|tambi[eé]n|adem[aá]s|despu[eé]s|y despu[eé]s)\b/g;
+  /\b(?:hay que (?:comprar|traer)|tenemos que (?:comprar|traer)|tengo que (?:comprar|traer)|necesitamos|necesito|nos falta|nos faltan|faltan?|comprar|traer|agrega|agregá|agregar|anota|anotá|anotar|por favor|tambi[eé]n|adem[aá]s|despu[eé]s|y despu[eé]s|coma|otra cosa|y tambi[eé]n)\b/g;
 
 const PREPOSICIONES = new Set(['de', 'con', 'sin', 'para', 'en', 'a', 'del']);
 const ARTICULOS = new Set(['el', 'la', 'los', 'las', 'unos', 'unas', 'algo', 'alguna', 'algunas', 'algunos']);
