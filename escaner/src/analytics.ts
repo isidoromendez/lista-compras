@@ -36,7 +36,9 @@ export type Evento =
   | { nombre: 'escaneo'; resultado: 'ok' | 'sin_precios' | 'no_encontrado' | 'error'; ean: string; producto?: string; localidad?: string; supers?: number; con_promo?: boolean }
   | { nombre: 'borrar_historial'; cantidad: number }
   | { nombre: 'instalar_toque'; con_dialogo: boolean }
-  | { nombre: 'app_instalada' };
+  | { nombre: 'app_instalada' }
+  | { nombre: 'semaforo'; veredicto: 'barato' | 'normal' | 'caro' }
+  | { nombre: 'debug_abierto' };
 
 export function medir(e: Evento) {
   if (!medicionActiva || !window.gtag) return;

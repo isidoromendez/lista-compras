@@ -39,6 +39,8 @@ export type Resultado =
       cantidadSuper: number; // súpers con precio actualizado hoy
       desactualizados: number; // súpers que tienen el producto pero no actualizaron hoy
       soloDesactualizados: boolean; // ningún súper actualizó hoy: el precio puede estar viejo
+      minimo: number;
+      cantidadPromos: number;
     }
   | { estado: 'sin-precios'; ean: string; nombre: string; marca: string; presentacion: string }
   | { estado: 'no-encontrado'; ean: string };
@@ -144,11 +146,31 @@ export function fmtDistancia(km: number | null) {
 
 // ---- Consultas ----
 
+// Para la hoja de datos técnicos: cada respuesta (o error) se informa a quien escuche.
+export type Respuesta = { path: string; url: string; status: number | null; ms: number; json: unknown; error?: string };
+let observador: ((r: Respuesta) => void) | null = null;
+export function observarRespuestas(f: (r: Respuesta) => void) {
+  observador = f;
+}
+
 async function get<T>(path: string, params: Record<string, string | number>): Promise<T> {
   const qs = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]));
-  const res = await fetch(`${BASE}/${path}?${qs}`);
-  if (!res.ok) throw new Error(`Precios Claros respondió ${res.status}`);
-  return res.json() as Promise<T>;
+  const url = `${BASE}/${path}?${qs}`;
+  const t0 = Date.now();
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch (e) {
+    observador?.({ path, url, status: null, ms: Date.now() - t0, json: null, error: String(e) });
+    throw e;
+  }
+  if (!res.ok) {
+    observador?.({ path, url, status: res.status, ms: Date.now() - t0, json: null, error: `HTTP ${res.status}` });
+    throw new Error(`Precios Claros respondió ${res.status}`);
+  }
+  const json = (await res.json()) as T;
+  observador?.({ path, url, status: res.status, ms: Date.now() - t0, json });
+  return json;
 }
 
 // La zona se reutiliza mientras no te muevas más de 3 km ni pasen 30 minutos.
@@ -228,6 +250,8 @@ export function interpretarProducto(ean: string, r: ProductoApi, zona: Zona): Re
     cantidadSuper: usados.length,
     desactualizados: conPrecio.length - deHoy.length,
     soloDesactualizados: deHoy.length === 0,
+    minimo: masBarato.precio,
+    cantidadPromos: promos.length,
   };
 }
 
