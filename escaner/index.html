@@ -29,6 +29,62 @@
         "image": "https://cuanto-sale.web.app/og.png"
       }
     </script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "¿De dónde salen los precios?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "De Precios Claros, el sistema del Gobierno donde los supermercados grandes informan sus precios todos los días."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Es gratis? ¿Hay que registrarse?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Es gratis y no hace falta registrarse ni dar ningún dato."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Qué supermercados aparecen?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Las cadenas que informan a Precios Claros, como Carrefour, Día, Coto, La Anónima, Changomás, La Coope, Jumbo, Disco y Vea. Los almacenes y autoservicios chicos no figuran."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Para qué usa mi ubicación?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Solo para buscar los súpers cerca tuyo: se usa en el momento para consultar Precios Claros y no guardamos dónde estás."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Por qué un producto no aparece?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Porque ningún súper de tu zona informó su precio. Pasa con marcas chicas, productos regionales o cosas que se venden sueltas."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Funciona en todo el país?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí, en cualquier lugar de Argentina donde haya supermercados que informen sus precios."
+      }
+    }
+  ]
+}
+    </script>
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://cuanto-sale.web.app/" />
     <meta property="og:title" content="¿Cuánto sale?" />
@@ -104,9 +160,43 @@
         <ul id="hist-lista"></ul>
       </section>
 
+      <section class="info" aria-labelledby="como-titulo">
+        <h2 id="como-titulo">¿Cómo funciona?</h2>
+        <ol class="pasos-info">
+          <li>Apuntá la cámara al código de barras de cualquier producto.</li>
+          <li>Te mostramos cuánto suele costar en los súpers cerca tuyo, y dónde está más barato.</li>
+          <li>Si querés, cargá el precio de la góndola y te decimos si está caro o barato.</li>
+        </ol>
+        <h2>Preguntas frecuentes</h2>
+          <details class="pregunta" open>
+            <summary>¿De dónde salen los precios?</summary>
+            <p>De Precios Claros, el sistema del Gobierno donde los supermercados grandes informan sus precios todos los días.</p>
+          </details>
+          <details class="pregunta">
+            <summary>¿Es gratis? ¿Hay que registrarse?</summary>
+            <p>Es gratis y no hace falta registrarse ni dar ningún dato.</p>
+          </details>
+          <details class="pregunta">
+            <summary>¿Qué supermercados aparecen?</summary>
+            <p>Las cadenas que informan a Precios Claros, como Carrefour, Día, Coto, La Anónima, Changomás, La Coope, Jumbo, Disco y Vea. Los almacenes y autoservicios chicos no figuran.</p>
+          </details>
+          <details class="pregunta">
+            <summary>¿Para qué usa mi ubicación?</summary>
+            <p>Solo para buscar los súpers cerca tuyo: se usa en el momento para consultar Precios Claros y no guardamos dónde estás.</p>
+          </details>
+          <details class="pregunta">
+            <summary>¿Por qué un producto no aparece?</summary>
+            <p>Porque ningún súper de tu zona informó su precio. Pasa con marcas chicas, productos regionales o cosas que se venden sueltas.</p>
+          </details>
+          <details class="pregunta">
+            <summary>¿Funciona en todo el país?</summary>
+            <p>Sí, en cualquier lugar de Argentina donde haya supermercados que informen sus precios.</p>
+          </details>
+      </section>
+
       <footer class="pie">
         <p>Los precios los informan los supermercados al sistema <a href="https://www.preciosclaros.gob.ar" target="_blank" rel="noopener">Precios Claros</a> del Gobierno Nacional. Son precios de lista: puede haber otras ofertas, y los negocios chicos no figuran.</p>
-        <p>¿Cuánto sale? es una app independiente: no es del Gobierno ni de ningún supermercado. Tu ubicación se usa solo en tu celular. <span id="aviso-medicion"></span></p>
+        <p>¿Cuánto sale? es una app independiente: no es del Gobierno ni de ningún supermercado. <span id="aviso-medicion"></span></p>
       </footer>
     </main>
 
