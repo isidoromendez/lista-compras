@@ -33,6 +33,8 @@ export function iniciarMedicion() {
 export type Evento =
   | { nombre: 'zona_lista'; localidad: string; supers: number }
   | { nombre: 'zona_error'; motivo: string; detalle?: string }
+  | { nombre: 'zona_guardada'; localidad: string }
+  | { nombre: 'zona_respaldo'; motivo: string }
   | { nombre: 'escaneo'; resultado: 'ok' | 'sin_precios' | 'no_encontrado' | 'error'; ean: string; producto?: string; localidad?: string; supers?: number; con_promo?: boolean }
   | { nombre: 'borrar_historial'; cantidad: number }
   | { nombre: 'instalar_toque'; desde: 'encabezado' | 'tarjeta'; caso: string }

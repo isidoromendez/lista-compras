@@ -3,12 +3,13 @@ import { iniciarMedicion, medicionActiva, medir } from './analytics';
 import { anotar, diag, exportar } from './diag';
 import { alCambiar, comoInstalar, instalar, yaInstalada } from './instalar';
 import {
-  _limpiarCache, consultarPrecio, fmtDistancia, fmtPrecio, obtenerZona, observarRespuestas,
+  _limpiarCache, consultarPrecio, distanciaKm, fmtDistancia, fmtPrecio, obtenerZona, observarRespuestas,
   type PrecioEn, type Resultado, type Zona,
 } from './precios';
 import { iniciarLector, type EstadoCamara } from './scanner';
 import { enlaceProducto, MENSAJE_APP, SITIO, textoCompartir } from './compartir';
 import { enCuadras, leerPrecio, semaforo } from './texto';
+import { guardarZona, haceCuanto, leerZona, MOVIDO_KM } from './memoria';
 import { pedirUbicacion, type Lectura } from './ubicacion';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -230,17 +231,52 @@ function textoZona(texto: string, naranja = false, tocable = false) {
   $<HTMLButtonElement>('zona').disabled = !tocable;
 }
 
+let zonaEn = 0; // cuándo se obtuvo la zona que se está usando
+
+function alTenerZona() {
+  if (pendiente) {
+    const ean = pendiente;
+    pendiente = null;
+    anotar(`enlace compartido · ${ean}`);
+    consultar(ean);
+  }
+}
+
+// Zona de respaldo (la de la última vez): se avisa de cuándo es y que se puede tocar para actualizar.
+function mostrarRespaldo(z: Zona, en: number, buscando: boolean) {
+  textoZona(
+    `Estás en ${z.localidad || 'tu zona'} · ${z.sucursales.length} súpers cerca · ` +
+      (buscando ? `última ubicación: ${haceCuanto(Date.now() - en)} · actualizando…` : `sin GPS, usamos tu última ubicación (${haceCuanto(Date.now() - en)}). Tocá para actualizar`),
+    false,
+    !buscando,
+  );
+}
+
 async function cargarZona() {
   if (buscandoZona) return;
   buscandoZona = true;
-  textoZona('Buscando dónde estás…');
+  // Respaldo: la zona que ya se estaba usando, o la guardada de la última vez.
+  let respaldo: { zona: Zona; en: number } | null = zona ? { zona, en: zonaEn } : null;
+  if (!respaldo) {
+    const g = leerZona();
+    if (g) {
+      respaldo = g;
+      zona = g.zona;
+      zonaEn = g.en;
+      anotar(`zona guardada · ${g.zona.localidad} · ${haceCuanto(Date.now() - g.en)}`);
+      medir({ nombre: 'zona_guardada', localidad: g.zona.localidad });
+      alTenerZona();
+    }
+  }
+  if (respaldo) mostrarRespaldo(respaldo.zona, respaldo.en, true);
+  else textoZona('Buscando dónde estás…');
   actualizarAviso();
   let motivo = '';
   let lectura: Lectura | null = null;
   try {
     lectura = await pedirUbicacion((l) => {
       diag.ubicacion = l;
-      if (!l.buenaPrecision && l.lecturas === 1) textoZona('Buscando dónde estás… (afinando la ubicación)');
+      if (!respaldo && !l.buenaPrecision && l.lecturas === 1) textoZona('Buscando dónde estás… (afinando la ubicación)');
     }).catch((e: Error) => {
       motivo = e.message === 'permiso' ? 'permiso' : 'ubicacion';
       throw e;
@@ -248,24 +284,27 @@ async function cargarZona() {
     diag.ubicacion = lectura;
     anotar(`ubicación ±${lectura.precisionM} m en ${(lectura.ms / 1000).toFixed(1)} s (${lectura.lecturas} lecturas)`);
 
-    zona = await obtenerZona(lectura).catch((e) => {
+    const nueva = await obtenerZona(lectura).catch((e) => {
       motivo = 'servicio';
       throw e;
     });
-    const cerca = zona.sucursales[0];
+    const cerca = nueva.sucursales[0];
     if (diag.zona) {
-      diag.zona.respondidas = zona.respondidas;
-      diag.zona.dentro40 = zona.sucursales.length;
+      diag.zona.respondidas = nueva.respondidas;
+      diag.zona.dentro40 = nueva.sucursales.length;
       diag.zona.masCercana = cerca ? `${cerca.cadena} ${cerca.direccion} · ${fmtDistancia(cerca.distanciaKm)}` : '—';
     }
-    if (zona.respondidas === 0) {
+    if (nueva.respondidas === 0) {
       motivo = 'servicio_vacio';
       throw new Error();
     }
-    if (!zona.sucursales.length) {
+    if (!nueva.sucursales.length) {
       motivo = 'sin_supers';
       throw new Error();
     }
+    zona = nueva;
+    zonaEn = Date.now();
+    guardarZona(nueva);
     reintentos = 0;
     const aprox = lectura.precisionM > 1000;
     textoZona(
@@ -275,13 +314,18 @@ async function cargarZona() {
     );
     anotar(`zona ok · ${zona.localidad} · ${zona.sucursales.length} súpers`);
     medir({ nombre: 'zona_lista', localidad: zona.localidad, supers: zona.sucursales.length });
-    if (pendiente) {
-      const ean = pendiente;
-      pendiente = null;
-      anotar(`enlace compartido · ${ean}`);
-      consultar(ean);
-    }
+    alTenerZona();
   } catch {
+    // Sin GPS (adentro del súper) o sin respuesta: si hay zona de respaldo y no te moviste lejos, se sigue con esa.
+    const lejos = respaldo && lectura ? distanciaKm(respaldo.zona.ubicacion, lectura) > MOVIDO_KM : false;
+    if (respaldo && motivo !== 'permiso' && !lejos) {
+      zona = respaldo.zona;
+      zonaEn = respaldo.en;
+      mostrarRespaldo(respaldo.zona, respaldo.en, false);
+      anotar(`sigue con la zona de respaldo · motivo: ${motivo || 'desconocido'}`);
+      medir({ nombre: 'zona_respaldo', motivo });
+      return;
+    }
     zona = null;
     const espera = esperaReintento();
     const reintenta = (motivo === 'servicio' || motivo === 'servicio_vacio') && reintentos < REINTENTOS_MAX;
@@ -292,7 +336,7 @@ async function cargarZona() {
           ? 'No encontramos supermercados que informen precios cerca tuyo. Tocá para probar de nuevo.'
           : motivo === 'servicio' || motivo === 'servicio_vacio'
             ? `El sistema de precios del Gobierno no está respondiendo. ${reintenta ? `Probamos de nuevo solos en ${Math.round(espera / 1000)} segundos.` : 'Tocá acá para probar de nuevo.'}`
-            : 'No pudimos saber dónde estás. Revisá que la ubicación del celular esté prendida y tocá acá.',
+            : 'No pudimos saber dónde estás. Si estás adentro de un lugar, probá cerca de una ventana o afuera, y tocá acá.',
       true,
       true,
     );
